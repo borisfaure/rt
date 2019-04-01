@@ -1,0 +1,7 @@
+[package]
+name = "trees"
+version = "0.1.0"
+authors = ["billiob"]
+edition = "2018"
+
+[dependencies]
