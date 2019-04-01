@@ -21,8 +21,8 @@ fn main() {
     // Construct a new ImageBuffer with the specified width and height.
     let mut img : RgbImage = ImageBuffer::new(512, 512);
 
-    let camera = Coords {x: 2., y: 2., z: 2.};
-    let mut scene = Scene::new(camera);
+    let eye = Coords {x: 2., y: 2., z: 2.};
+    let mut scene = Scene::new(eye);
     let sphere = object::Sphere {
         center: Coords {x: 0.4, y: 0.5, z: 0.6},
         radius: 0.3,

@@ -9,14 +9,14 @@ pub struct Coords {
 
 
 pub struct Scene {
-    pub camera: Coords,
+    pub eye: Coords,
     pub objects: Vec<Box<Object>>,
 }
 
 impl Scene {
-    pub fn new(camera: Coords) -> Scene {
+    pub fn new(eye: Coords) -> Scene {
         Scene {
-            camera: camera,
+            eye: eye,
             objects: Vec::new(),
         }
     }
