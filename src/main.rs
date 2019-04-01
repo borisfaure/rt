@@ -1,6 +1,7 @@
 extern crate image;
 use image::{
     ImageBuffer,
+    Rgb,
     RgbImage
 };
 
@@ -10,7 +11,7 @@ mod raytracer;
 
 use std::path;
 use scene::{
-    Coord,
+    Coords,
     Scene
 };
 
@@ -18,12 +19,19 @@ fn main() {
     let path = path::Path::new("/tmp/test_raytracer.png");
 
     // Construct a new ImageBuffer with the specified width and height.
-    let img : RgbImage = ImageBuffer::new(512, 512);
+    let mut img : RgbImage = ImageBuffer::new(512, 512);
 
-    let camera = Coord {x: 1., y: 1., z: 1.};
-    let scene = Scene::new(camera);
+    let camera = Coords {x: 2., y: 2., z: 2.};
+    let mut scene = Scene::new(camera);
+    let sphere = object::Sphere {
+        center: Coords {x: 0.4, y: 0.5, z: 0.6},
+        radius: 0.3,
+        color: Rgb([255, 0, 216]),
+    };
+    scene.add(sphere);
 
-    raytracer::render_scene(scene, &img);
+
+    raytracer::render_scene(&scene, &mut img);
 
     img.save(path).unwrap();
 }
