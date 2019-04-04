@@ -5,7 +5,7 @@ use crate::raytracer::{
     Ray,
     Shading
 };
-use crate::scene::Coords;
+use crate::maths::Coords;
 
 pub trait Object {
     fn intersects(&self, r: &Ray) -> Option<(f64, Shading)>;
