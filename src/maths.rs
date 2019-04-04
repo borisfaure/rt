@@ -51,6 +51,9 @@ impl Vector {
             self.z * v.x - self.x * v.z,
             self.x * v.y - self.y * v.x)
     }
+    pub fn dot_product(&self, v: &Vector) -> f64 {
+        self.x * v.x + self.y * v.y + self.z * v.z
+    }
 }
 
 
