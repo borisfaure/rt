@@ -23,8 +23,7 @@ use scene::{
     Scene
 };
 use maths::{
-    Coords,
-    Vector,
+    Vec3,
 };
 use object::{
     Sphere,
@@ -38,13 +37,13 @@ fn main() {
     let mut img : RgbImage = ImageBuffer::new(512, 512);
     //let mut img : RgbImage = ImageBuffer::new(10, 10);
 
-    let eye = Eye { origin: Coords::new(0., 0., -3.),
-                    direction: Vector::new_normalized(0., 0., 1.)
+    let eye = Eye { origin: Vec3::new(0., 0., -3.),
+                    direction: Vec3::new_normalized(0., 0., 1.)
     };
 
     let mut scene = Scene::new();
     let sphere = Sphere::new(
-        Coords::new(0.0, 0.0, 0.0),
+        Vec3::new(0.0, 0.0, 0.0),
         0.4,
         Rgb([255, 0, 216])
     );

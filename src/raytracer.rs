@@ -7,19 +7,20 @@ use crate::scene::{
     Scene,
 };
 use crate::maths::{
-    Coords,
-    Vector,
+    Vec3,
 };
 use std::f64;
 
 pub struct Shading {
     pub color: Rgb<u8>,
+    pub n : Vec3,
 }
 
 impl Shading {
     fn new() -> Shading {
         Shading {
             color: Rgb([0, 0, 0]),
+            n: Vec3::new(0., 0., 0.),
         }
     }
     fn to_pixel(&self, _distance: f64) -> Rgb<u8> {
@@ -30,35 +31,35 @@ impl Shading {
 
 #[derive(Debug,Clone)]
 pub struct Eye {
-    pub origin: Coords,
-    pub direction: Vector,
+    pub origin: Vec3,
+    pub direction: Vec3,
 }
 
 #[derive(Debug,Clone)]
 pub struct Ray {
-    pub o: Coords,
-    pub d: Vector,
+    pub o: Vec3,
+    pub d: Vec3,
 }
 
 struct RayCtx {
     eye: Eye,
-    w: Vector,
-    b: Vector,
-    v: Vector,
-    c: Coords,
-    p_top_left: Coords,
-    p_top_right: Coords,
-    p_bottom_left: Coords,
+    w: Vec3,
+    b: Vec3,
+    v: Vec3,
+    c: Vec3,
+    p_top_left: Vec3,
+    p_top_right: Vec3,
+    p_bottom_left: Vec3,
     width: f64,
     height: f64,
     hx: f64,
     hy: f64,
-    qx: Vector,
-    qy: Vector,
+    qx: Vec3,
+    qy: Vec3,
 }
 impl RayCtx {
     fn new(eye: &Eye, img: &RgbImage) -> RayCtx {
-        let w = Vector::new(0., 1., 0.);
+        let w = Vec3::new(0., 1., 0.);
         let b = w.cross_product(&eye.direction);
         let v = eye.direction.cross_product(&b);
         debug!("b:{:?} v:{:?}", b, v);
@@ -76,25 +77,25 @@ impl RayCtx {
         let hx = d;
         let hy = hx / aspect_ratio;
 
-        let p_top_left = Coords::new(
+        let p_top_left = Vec3::new(
             c.x - 0.5 * b.x + 0.5 * v.x,
             c.y - 0.5 * b.y + 0.5 * v.y,
             c.z - 0.5 * b.z + 0.5 * v.z);
-        let p_top_right = Coords::new(
+        let p_top_right = Vec3::new(
             c.x + 0.5 * b.x + 0.5 * v.x,
             c.y + 0.5 * b.y + 0.5 * v.y,
             c.z + 0.5 * b.z + 0.5 * v.z);
-        let p_bottom_left = Coords::new(
+        let p_bottom_left = Vec3::new(
             c.x - 0.5 * b.x - 0.5 * v.x,
             c.y - 0.5 * b.y - 0.5 * v.y,
             c.z - 0.5 * b.z - 0.5 * v.z);
         debug!("top_left:{:?} top_right:{:?} bottom_left:{:?}",
                p_top_left, p_top_right, p_bottom_left);
-        let qx = Vector::new(
+        let qx = Vec3::new(
             p_top_right.x - p_top_left.x,
             p_top_right.y - p_top_left.y,
             p_top_right.z - p_top_left.z);
-        let qy = Vector::new(
+        let qy = Vec3::new(
             p_bottom_left.x - p_top_left.x,
             p_bottom_left.y - p_top_left.y,
             p_bottom_left.z - p_top_left.z);
@@ -137,7 +138,7 @@ impl Ray {
             - ctx.eye.origin.z;
 
         debug!("({:?}, {:?}) -> ({:?}, {:?}, {:?})", i,j, x, y , z);
-        let d = Vector::new_normalized(x, y, z);
+        let d = Vec3::new_normalized(x, y, z);
         let r = Ray {o: ctx.eye.origin.clone(), d: d};
         r
     }
