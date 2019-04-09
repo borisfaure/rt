@@ -2,6 +2,7 @@ extern crate image;
 #[macro_use]
 extern crate log;
 extern crate pretty_env_logger;
+extern crate color_scaling;
 
 use image::{
     ImageBuffer,

@@ -1,3 +1,4 @@
+use color_scaling::scale_rgb;
 use image::{
     Rgb,
     RgbImage,
@@ -158,7 +159,14 @@ fn cast_ray(ctx: &RayCtx, scene: &Scene, x: u32, y: u32) -> Rgb<u8> {
             }
         }
     }
-    sh_min.to_pixel(distance_min)
+    if distance_min == f64::INFINITY {
+        let white : Rgb<u8> = Rgb([255, 255, 255]);
+        let blue  : Rgb<u8> = Rgb([ 77, 143, 170]);
+
+        scale_rgb(&blue, &white, j).unwrap()
+    } else {
+        sh_min.to_pixel(distance_min)
+    }
 }
 
 pub fn render_scene(scene: &Scene, eye: &Eye, img: &mut RgbImage) {
