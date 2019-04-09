@@ -33,6 +33,7 @@ pub struct Eye {
     pub direction: Vector,
 }
 
+#[derive(Debug,Clone)]
 pub struct Ray {
     pub o: Coords,
     pub d: Vector,
@@ -59,6 +60,7 @@ impl RayCtx {
         let w = Vector::new(0., 1., 0.);
         let b = w.cross_product(&eye.direction);
         let v = eye.direction.cross_product(&b);
+        debug!("b:{:?} v:{:?}", b, v);
         let d = 1.;
         let c = eye.origin.translate(&eye.direction, d);
         // Obtain the image's width and height.
@@ -74,25 +76,29 @@ impl RayCtx {
         let hy = hx / aspect_ratio;
 
         let p_top_left = Coords::new(
-            c.x - 0.5 * b.x - 0.5 * v.x,
-            c.y - 0.5 * b.y - 0.5 * v.y,
-            c.z - 0.5 * b.z - 0.5 * v.z);
-        let p_top_right = Coords::new(
             c.x - 0.5 * b.x + 0.5 * v.x,
             c.y - 0.5 * b.y + 0.5 * v.y,
             c.z - 0.5 * b.z + 0.5 * v.z);
+        let p_top_right = Coords::new(
+            c.x + 0.5 * b.x + 0.5 * v.x,
+            c.y + 0.5 * b.y + 0.5 * v.y,
+            c.z + 0.5 * b.z + 0.5 * v.z);
         let p_bottom_left = Coords::new(
-            c.x + 0.5 * b.x - 0.5 * v.x,
-            c.y + 0.5 * b.y - 0.5 * v.y,
-            c.z + 0.5 * b.z - 0.5 * v.z);
+            c.x - 0.5 * b.x - 0.5 * v.x,
+            c.y - 0.5 * b.y - 0.5 * v.y,
+            c.z - 0.5 * b.z - 0.5 * v.z);
+        debug!("top_left:{:?} top_right:{:?} bottom_left:{:?}",
+               p_top_left, p_top_right, p_bottom_left);
         let qx = Vector::new(
-            (p_top_right.x - p_top_left.x) / width,
-            (p_top_right.x - p_top_left.x) / width,
-            (p_top_right.x - p_top_left.x) / width);
+            p_top_right.x - p_top_left.x,
+            p_top_right.y - p_top_left.y,
+            p_top_right.z - p_top_left.z);
         let qy = Vector::new(
-            (p_bottom_left.x - p_top_left.x) / height,
-            (p_bottom_left.x - p_top_left.x) / height,
-            (p_bottom_left.x - p_top_left.x) / height);
+            p_bottom_left.x - p_top_left.x,
+            p_bottom_left.y - p_top_left.y,
+            p_bottom_left.z - p_top_left.z);
+
+        debug!("qx:{:?}, qy:{:?}", qx ,qy);
 
         RayCtx {
             eye: (*eye).clone(),
@@ -116,11 +122,21 @@ impl RayCtx {
 impl Ray {
     fn new(ctx: &RayCtx, i: f64, j: f64) -> Ray {
         /* Origin is the eye */
-        let x = ctx.p_top_left.x + i * ctx.qx.x + j * ctx.qy.x;
-        let y = ctx.p_top_left.y + i * ctx.qx.y + j * ctx.qy.y;
-        let z = ctx.p_top_left.z + i * ctx.qx.z + j * ctx.qy.z;
+        let x = ctx.p_top_left.x
+            + i * ctx.qx.x
+            + j * ctx.qy.x
+            - ctx.eye.origin.x;
+        let y = ctx.p_top_left.y
+            + i * ctx.qx.y
+            + j * ctx.qy.y
+            - ctx.eye.origin.y;
+        let z = ctx.p_top_left.z
+            + i * ctx.qx.z
+            + j * ctx.qy.z
+            - ctx.eye.origin.z;
 
-        let d = Vector::new(x, y, z);
+        debug!("({:?}, {:?}) -> ({:?}, {:?}, {:?})", i,j, x, y , z);
+        let d = Vector::new_normalized(x, y, z);
         let r = Ray {o: ctx.eye.origin.clone(), d: d};
         r
     }
@@ -130,6 +146,7 @@ fn cast_ray(ctx: &RayCtx, scene: &Scene, x: u32, y: u32) -> Rgb<u8> {
     let i = x as f64 / ctx.width;
     let j = y as f64 / ctx.height;
     let r = Ray::new(&ctx, i, j);
+    debug!("({:?},{:?}) r:{:?}", i, j, r);
     let mut distance_min = f64::INFINITY;
     let mut sh_min = Shading::new();
 
@@ -147,6 +164,7 @@ fn cast_ray(ctx: &RayCtx, scene: &Scene, x: u32, y: u32) -> Rgb<u8> {
 pub fn render_scene(scene: &Scene, eye: &Eye, img: &mut RgbImage) {
     let ctx = RayCtx::new(&eye, &img);
 
+    debug!("rendering scene");
     for (x, y, pixel) in img.enumerate_pixels_mut() {
         *pixel = cast_ray(&ctx, scene, x, y);
     }

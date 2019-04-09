@@ -1,4 +1,7 @@
 extern crate image;
+#[macro_use]
+extern crate log;
+extern crate pretty_env_logger;
 
 use image::{
     ImageBuffer,
@@ -22,22 +25,28 @@ use maths::{
     Coords,
     Vector,
 };
+use object::{
+    Sphere,
+};
 
 fn main() {
+    pretty_env_logger::init();
     let path = path::Path::new("/tmp/test_raytracer.png");
 
     // Construct a new ImageBuffer with the specified width and height.
     let mut img : RgbImage = ImageBuffer::new(512, 512);
+    //let mut img : RgbImage = ImageBuffer::new(10, 10);
 
-    let eye = Eye { origin: Coords::new(2., 2., 2.),
-                    direction: Vector::new(1., 1., 1.),};
+    let eye = Eye { origin: Coords::new(0., 0., -3.),
+                    direction: Vector::new_normalized(0., 0., 1.)
+    };
 
     let mut scene = Scene::new();
-    let sphere = object::Sphere {
-        center: Coords {x: 0.4, y: 0.5, z: 0.6},
-        radius: 0.3,
-        color: Rgb([255, 0, 216]),
-    };
+    let sphere = Sphere::new(
+        Coords::new(0.0, 0.0, 0.0),
+        0.4,
+        Rgb([255, 0, 216])
+    );
     scene.add(sphere);
 
 

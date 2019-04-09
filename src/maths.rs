@@ -20,6 +20,11 @@ impl Coords {
             z: self.z + v.z * d,
         }
     }
+    pub fn length_sq(&self, p: &Coords) -> f64 {
+        (self.x - p.x) * (self.x - p.x) +
+        (self.y - p.y) * (self.y - p.y) +
+        (self.z - p.z) * (self.z - p.z)
+    }
 }
 
 #[derive(Debug,Clone)]
@@ -36,6 +41,11 @@ impl Vector {
             y: y,
             z: z,
         }
+    }
+    pub fn new_normalized(x: f64, y: f64, z: f64) -> Vector {
+        let mut v : Vector = Vector::new(x, y ,z);
+        v.normalize();
+        v
     }
     pub fn normalize(&mut self) {
         let d = (self.x * self.x +
