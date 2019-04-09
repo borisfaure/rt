@@ -49,6 +49,10 @@ impl Vec3 {
     }
 }
 
+pub fn remap_01(a: f64, b: f64, t: f64) -> f64 {
+    (t - a) / (b - a)
+}
+
 
 #[derive(Debug,Clone)]
 pub struct Plane {

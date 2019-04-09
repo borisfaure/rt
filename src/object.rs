@@ -1,3 +1,4 @@
+use color_scaling::scale_rgb;
 use image::{
     Rgb,
 };
@@ -6,6 +7,7 @@ use crate::raytracer::{
     Shading
 };
 use crate::maths::{
+    remap_01,
     Vec3,
 };
 
@@ -45,13 +47,16 @@ impl Object for Sphere {
         if y_sq > self.rd_sq {
             return None;
         }
+        let x = f64::sqrt(self.rd_sq - y_sq);
+        let t1 = t - x;
+        //let t2 = t + x;
+        let to_center = f64::sqrt(v.dot_product(&v));
+        let s = remap_01(to_center, to_center - self.radius, t1);
+        let black : Rgb<u8> = Rgb([0, 0, 0]);
         let sd = Shading {
-            color: self.color.clone(),
+            color: scale_rgb(&black, &self.color, s).unwrap(),
             n: Vec3::new(0., 0., 0.),
         };
         Some((0., sd))
-        //let x = f64::sqrt(self.rd_sq - y_sq);
-        //let t1 = t - x;
-        //let t2 = t + x;
     }
 }
