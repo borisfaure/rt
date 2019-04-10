@@ -35,7 +35,7 @@ fn main() {
     let path = path::Path::new("/tmp/test_raytracer.png");
 
     // Construct a new ImageBuffer with the specified width and height.
-    let mut img : RgbImage = ImageBuffer::new(512, 512);
+    let mut img : RgbImage = ImageBuffer::new(512, 256);
     //let mut img : RgbImage = ImageBuffer::new(10, 10);
 
     let eye = Eye { origin: Vec3::new(0., 1., -3.),

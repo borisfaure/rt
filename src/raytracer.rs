@@ -71,7 +71,7 @@ impl RayCtx {
         let (width, height) = img.dimensions();
         let width = width as f64;
         let height = height as f64;
-        let aspect_ratio = 1_f64;
+        let aspect_ratio = width / height;
 
         /* Use 90° as horizontal field of view
          * Tan(π/4) = 1
@@ -80,17 +80,17 @@ impl RayCtx {
         let hy = hx / aspect_ratio;
 
         let p_top_left = Vec3::new(
-            c.x - 0.5 * b.x + 0.5 * v.x,
-            c.y - 0.5 * b.y + 0.5 * v.y,
-            c.z - 0.5 * b.z + 0.5 * v.z);
+            c.x - 0.5 * aspect_ratio * b.x + 0.5 * v.x,
+            c.y - 0.5 * aspect_ratio * b.y + 0.5 * v.y,
+            c.z - 0.5 * aspect_ratio * b.z + 0.5 * v.z);
         let p_top_right = Vec3::new(
-            c.x + 0.5 * b.x + 0.5 * v.x,
-            c.y + 0.5 * b.y + 0.5 * v.y,
-            c.z + 0.5 * b.z + 0.5 * v.z);
+            c.x + 0.5 * aspect_ratio * b.x + 0.5 * v.x,
+            c.y + 0.5 * aspect_ratio * b.y + 0.5 * v.y,
+            c.z + 0.5 * aspect_ratio * b.z + 0.5 * v.z);
         let p_bottom_left = Vec3::new(
-            c.x - 0.5 * b.x - 0.5 * v.x,
-            c.y - 0.5 * b.y - 0.5 * v.y,
-            c.z - 0.5 * b.z - 0.5 * v.z);
+            c.x - 0.5 * aspect_ratio * b.x - 0.5 * v.x,
+            c.y - 0.5 * aspect_ratio * b.y - 0.5 * v.y,
+            c.z - 0.5 * aspect_ratio * b.z - 0.5 * v.z);
         debug!("top_left:{:?} top_right:{:?} bottom_left:{:?}",
                p_top_left, p_top_right, p_bottom_left);
         let qx = Vec3::new(
