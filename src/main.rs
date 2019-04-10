@@ -26,6 +26,7 @@ use maths::{
     Vec3,
 };
 use object::{
+    Plan,
     Sphere,
 };
 
@@ -49,6 +50,12 @@ fn main() {
     );
     scene.add(sphere);
 
+    let floor = Plan::new(
+        Vec3::new(0.0, 0.0, 0.0),
+        Vec3::new(0.0, 1.0, 0.0),
+        Rgb([237, 201, 175])
+    );
+    scene.add(floor);
 
     raytracer::render_scene(&scene, &eye, &mut img);
 

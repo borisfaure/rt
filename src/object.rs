@@ -4,7 +4,7 @@ use image::{
 };
 use crate::raytracer::{
     Ray,
-    Shading
+    Hit,
 };
 use crate::maths::{
     remap_01,
@@ -12,8 +12,29 @@ use crate::maths::{
 };
 
 pub trait Object {
-    fn intersects(&self, r: &Ray) -> Option<(f64, Shading)>;
+    fn hits(&self, r: &Ray) -> Option<Hit>;
 }
+
+pub struct Plan {
+    p: Vec3,
+    normal: Vec3,
+    color: Rgb<u8>,
+}
+impl Plan {
+    pub fn new(p: Vec3, normal: Vec3, color: Rgb<u8>) -> Plan {
+        Plan {
+            p: p,
+            normal: normal,
+            color: color,
+        }
+    }
+}
+impl Object for Plan {
+    fn hits(&self, r: &Ray) -> Option<Hit> {
+        None
+    }
+}
+
 
 pub struct Sphere {
     center: Vec3,
@@ -33,7 +54,7 @@ impl Sphere {
 }
 
 impl Object for Sphere {
-    fn intersects(&self, r: &Ray) -> Option<(f64, Shading)> {
+    fn hits(&self, r: &Ray) -> Option<Hit> {
         let v = Vec3::new(self.center.x - r.o.x,
                             self.center.y - r.o.y,
                             self.center.z - r.o.z);
@@ -52,11 +73,16 @@ impl Object for Sphere {
         //let t2 = t + x;
         let to_center = f64::sqrt(v.dot_product(&v));
         let s = remap_01(to_center, to_center - self.radius, t1);
+        let p = Vec3::new(r.o.x + t1 * r.d.x,
+                          r.o.y + t1 * r.d.y,
+                          r.o.z + t1 * r.d.z);
         let black : Rgb<u8> = Rgb([0, 0, 0]);
-        let sd = Shading {
+        let h = Hit {
             color: scale_rgb(&black, &self.color, s).unwrap(),
-            n: Vec3::new(0., 0., 0.),
+            p: p,
+            normal: Vec3::new(0., 0., 0.),
+            t: t1,
         };
-        Some((0., sd))
+        Some(h)
     }
 }

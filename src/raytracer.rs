@@ -11,16 +11,20 @@ use crate::maths::{
 };
 use std::f64;
 
-pub struct Shading {
+pub struct Hit {
     pub color: Rgb<u8>,
-    pub n : Vec3,
+    pub p : Vec3,
+    pub normal : Vec3,
+    pub t : f64,
 }
 
-impl Shading {
-    fn new() -> Shading {
-        Shading {
+impl Hit {
+    fn new() -> Hit {
+        Hit {
             color: Rgb([0, 0, 0]),
-            n: Vec3::new(0., 0., 0.),
+            normal: Vec3::new(0., 0., 0.),
+            p: Vec3::new(0., 0., 0.),
+            t: 0.
         }
     }
     fn to_pixel(&self, _distance: f64) -> Rgb<u8> {
@@ -148,28 +152,23 @@ fn cast_ray(ctx: &RayCtx, scene: &Scene, i: f64, j: f64) -> Rgb<u8> {
     let r = Ray::new(&ctx, i, j);
     debug!("({:?},{:?}) r:{:?}", i, j, r);
     let mut distance_min = f64::INFINITY;
-    let mut sh_min = Shading::new();
+    let mut hit_min = Hit::new();
 
     for o in &scene.objects {
-        if let Some((distance, shading)) = o.intersects(&r) {
-            if distance < distance_min {
-                distance_min = distance;
-                sh_min = shading;
+        if let Some(hit) = o.hits(&r) {
+            if hit.t < distance_min {
+                distance_min = hit.t;
+                hit_min = hit;
             }
         }
     }
     if distance_min == f64::INFINITY {
-        /* TODO: make that better */
-        if j > 0.5 {
-            Rgb([237, 201, 175])
-        } else {
-            let white : Rgb<u8> = Rgb([255, 255, 255]);
-            let blue  : Rgb<u8> = Rgb([ 77, 143, 170]);
+        let white : Rgb<u8> = Rgb([255, 255, 255]);
+        let blue  : Rgb<u8> = Rgb([ 77, 143, 170]);
 
-            scale_rgb(&blue, &white, j).unwrap()
-        }
+        scale_rgb(&blue, &white, j).unwrap()
     } else {
-        sh_min.to_pixel(distance_min)
+        hit_min.to_pixel(distance_min)
     }
 }
 
