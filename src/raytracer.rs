@@ -1,5 +1,6 @@
 use color_scaling::scale_rgb;
 use image::{
+    ImageBuffer,
     Rgb,
     RgbImage,
 };
@@ -11,6 +12,7 @@ use crate::maths::{
 };
 use rand::Rng;
 use std::f64;
+use rayon::prelude::*;
 
 pub struct Hit {
     pub color: Rgb<u8>,
@@ -61,7 +63,7 @@ struct RayCtx {
     qy: Vec3,
 }
 impl RayCtx {
-    fn new(eye: &Eye, img: &RgbImage) -> RayCtx {
+    fn new(eye: &Eye, width: u32, height: u32) -> RayCtx {
         let w = Vec3::new(0., 1., 0.);
         let b = w.cross_product(&eye.direction);
         let v = eye.direction.cross_product(&b);
@@ -69,7 +71,6 @@ impl RayCtx {
         let d = 1.;
         let c = eye.origin.translate(&eye.direction, d);
         // Obtain the image's width and height.
-        let (width, height) = img.dimensions();
         let width = width as f64;
         let height = height as f64;
         let aspect_ratio = width / height;
@@ -176,38 +177,51 @@ fn cast_ray(ctx: &RayCtx, scene: &Scene, i: f64, j: f64) -> Rgb<u8> {
     }
 }
 
-pub fn render_scene(scene: &Scene, eye: &Eye, nsamples: u64, img: &mut RgbImage) {
-    let ctx = RayCtx::new(&eye, &img);
+pub fn render_scene(scene: &Scene, eye: &Eye, nsamples: u64, width: u32, height: u32) -> RgbImage {
+    let ctx = RayCtx::new(&eye, width, height);
+    let black : Rgb<u8> = Rgb([0, 0, 0]);
+    let mut buf: Vec<Rgb<u8>> = vec![black; (width * height) as usize];
 
     debug!("rendering scene");
-    for (x, y, pixel) in img.enumerate_pixels_mut() {
-        let i_min = x as f64 / ctx.width;
-        let i_max = (x+1) as f64 / ctx.width;
-        let j_min = y as f64 / ctx.height;
-        let j_max = (y+1) as f64 / ctx.height;
+    buf.par_iter_mut().enumerate().for_each(
+        |(n, pixel)| {
+            let y = (n as u32) / width;
+            let x = (n as u32) - (y * width);
+            let i_min = x as f64 / ctx.width;
+            let i_max = (x+1) as f64 / ctx.width;
+            let j_min = y as f64 / ctx.height;
+            let j_max = (y+1) as f64 / ctx.height;
 
-        let i_step = i_max - i_min;
-        let j_step = j_max - j_min;
+            let i_step = i_max - i_min;
+            let j_step = j_max - j_min;
 
-        let mut r = 0_u64;
-        let mut g = 0_u64;
-        let mut b = 0_u64;
+            let mut r = 0_u64;
+            let mut g = 0_u64;
+            let mut b = 0_u64;
 
-        let mut rng = rand::thread_rng();
+            let mut rng = rand::thread_rng();
 
-        for _ in 0..nsamples {
-            let i = i_min + rng.gen::<f64>() * i_step;
-            let j = j_min + rng.gen::<f64>() * j_step;
+            for _ in 0..nsamples {
+                let i = i_min + rng.gen::<f64>() * i_step;
+                let j = j_min + rng.gen::<f64>() * j_step;
 
-            let p = cast_ray(&ctx, scene, i, j);
-            r += p[0] as u64;
-            g += p[1] as u64;
-            b += p[2] as u64;
-        }
+                let p = cast_ray(&ctx, scene, i, j);
+                r += p[0] as u64;
+                g += p[1] as u64;
+                b += p[2] as u64;
+            }
 
-        *pixel = Rgb([
-                     (r/nsamples) as u8,
-                     (g/nsamples) as u8,
-                     (b/nsamples) as u8])
-    }
+            *pixel = Rgb([
+                         (r/nsamples) as u8,
+                         (g/nsamples) as u8,
+                         (b/nsamples) as u8])
+        });
+    let mut img : RgbImage = ImageBuffer::new(width, height);
+    for n in 0..(width*height) {
+        let y = (n as u32) / width;
+        let x = (n as u32) - (y * width);
+        img.put_pixel(x, y, buf[n as usize]);
+    };
+
+    img
 }

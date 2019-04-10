@@ -2,7 +2,7 @@ use crate::object::Object;
 
 
 pub struct Scene {
-    pub objects: Vec<Box<Object>>,
+    pub objects: Vec<Box<Object + Sync + Send>>,
 }
 
 impl Scene {
@@ -11,7 +11,7 @@ impl Scene {
             objects: Vec::new(),
         }
     }
-    pub fn add<O: 'static + Object>(&mut self, obj: O) {
+    pub fn add<O: 'static + Object + Sync + Send>(&mut self, obj: O) {
         self.objects.push(Box::new(obj));
     }
 }
