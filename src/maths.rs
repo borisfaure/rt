@@ -1,3 +1,5 @@
+pub static EPSILON: f64 = 0.0001;
+
 #[derive(Debug,Clone)]
 pub struct Vec3 {
     pub x: f64,
@@ -13,6 +15,11 @@ impl Vec3 {
             z: z,
         }
     }
+
+    pub fn origin() -> Vec3 {
+        Vec3 { x: 0., y: 0., z: 0., }
+    }
+
     pub fn new_normalized(x: f64, y: f64, z: f64) -> Vec3 {
         let mut v : Vec3 = Vec3::new(x, y ,z);
         v.normalize();
@@ -46,6 +53,20 @@ impl Vec3 {
         (self.x - p.x) * (self.x - p.x) +
         (self.y - p.y) * (self.y - p.y) +
         (self.z - p.z) * (self.z - p.z)
+    }
+    pub fn to(&self, dest: &Vec3) -> Vec3 {
+        Vec3 {
+            x: dest.x - self.x,
+            y: dest.y - self.y,
+            z: dest.z - self.z,
+        }
+    }
+    pub fn at(&self, from: &Vec3, t: f64) -> Vec3 {
+        Vec3 {
+            x: from.x + t * self.x,
+            y: from.y + t * self.y,
+            z: from.z + t * self.z,
+        }
     }
 }
 

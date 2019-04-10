@@ -13,7 +13,6 @@ use std::f64;
 
 pub struct Hit {
     pub color: Rgb<u8>,
-    pub p : Vec3,
     pub normal : Vec3,
     pub t : f64,
 }
@@ -23,7 +22,6 @@ impl Hit {
         Hit {
             color: Rgb([0, 0, 0]),
             normal: Vec3::new(0., 0., 0.),
-            p: Vec3::new(0., 0., 0.),
             t: 0.
         }
     }
@@ -41,8 +39,8 @@ pub struct Eye {
 
 #[derive(Debug,Clone)]
 pub struct Ray {
-    pub o: Vec3,
-    pub d: Vec3,
+    pub origin: Vec3,
+    pub direction: Vec3,
 }
 
 struct RayCtx {
@@ -143,14 +141,19 @@ impl Ray {
 
         debug!("({:?}, {:?}) -> ({:?}, {:?}, {:?})", i,j, x, y , z);
         let d = Vec3::new_normalized(x, y, z);
-        let r = Ray {o: ctx.eye.origin.clone(), d: d};
+        let r = Ray {origin: ctx.eye.origin.clone(), direction: d};
         r
+    }
+
+    pub fn at(&self, t: f64) -> Vec3 {
+        self.direction.at(&self.origin, t)
     }
 }
 
 fn cast_ray(ctx: &RayCtx, scene: &Scene, i: f64, j: f64) -> Rgb<u8> {
     let r = Ray::new(&ctx, i, j);
     debug!("({:?},{:?}) r:{:?}", i, j, r);
+    assert!(r.direction.z >= 0.);
     let mut distance_min = f64::INFINITY;
     let mut hit_min = Hit::new();
 

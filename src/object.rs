@@ -7,9 +7,11 @@ use crate::raytracer::{
     Hit,
 };
 use crate::maths::{
+    EPSILON,
     remap_01,
     Vec3,
 };
+
 
 pub trait Object {
     fn hits(&self, r: &Ray) -> Option<Hit>;
@@ -31,7 +33,21 @@ impl Plan {
 }
 impl Object for Plan {
     fn hits(&self, r: &Ray) -> Option<Hit> {
-        None
+        let dn = r.direction.dot_product(&self.normal);
+        if dn >= EPSILON {
+            return None;
+        }
+        let to_plan = r.origin.to(&self.p);
+        let t = to_plan.dot_product(&self.normal) / dn;
+        if t <= EPSILON {
+            return None;
+        }
+        let h = Hit {
+            color: self.color.clone(),
+            normal: self.normal.clone(),
+            t: t,
+        };
+        Some(h)
     }
 }
 
@@ -55,13 +71,9 @@ impl Sphere {
 
 impl Object for Sphere {
     fn hits(&self, r: &Ray) -> Option<Hit> {
-        let v = Vec3::new(self.center.x - r.o.x,
-                            self.center.y - r.o.y,
-                            self.center.z - r.o.z);
-        let t = v.dot_product(&r.d);
-        let p = Vec3::new(r.o.x + t * r.d.x,
-                          r.o.y + t * r.d.y,
-                          r.o.z + t * r.d.z);
+        let v = r.origin.to(&self.center);
+        let t = v.dot_product(&r.direction);
+        let p = r.at(t);
         let y_sq = self.center.length_sq(&p);
         debug!("t:{:?} p:{:?}", t, p);
         debug!("y_sq:{:?} vs rd_sq:{:?}", y_sq, self.rd_sq);
@@ -73,14 +85,13 @@ impl Object for Sphere {
         //let t2 = t + x;
         let to_center = f64::sqrt(v.dot_product(&v));
         let s = remap_01(to_center, to_center - self.radius, t1);
-        let p = Vec3::new(r.o.x + t1 * r.d.x,
-                          r.o.y + t1 * r.d.y,
-                          r.o.z + t1 * r.d.z);
+        let p = r.at(t1);
+        let mut n = self.center.to(&p);
+        n.normalize();
         let black : Rgb<u8> = Rgb([0, 0, 0]);
         let h = Hit {
             color: scale_rgb(&black, &self.color, s).unwrap(),
-            p: p,
-            normal: Vec3::new(0., 0., 0.),
+            normal: n,
             t: t1,
         };
         Some(h)

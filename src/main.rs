@@ -38,20 +38,20 @@ fn main() {
     let mut img : RgbImage = ImageBuffer::new(512, 512);
     //let mut img : RgbImage = ImageBuffer::new(10, 10);
 
-    let eye = Eye { origin: Vec3::new(0., 0., -3.),
-                    direction: Vec3::new_normalized(0., 0., 1.)
+    let eye = Eye { origin: Vec3::new(0., 1., -3.),
+                    direction: Vec3::new_normalized(0., -0.1, 1.)
     };
 
     let mut scene = Scene::new();
     let sphere = Sphere::new(
-        Vec3::new(0.0, 0.0, 0.0),
+        Vec3::new(0.0, 0.4, 0.0),
         0.4,
         Rgb([255, 0, 216])
     );
     scene.add(sphere);
 
     let floor = Plan::new(
-        Vec3::new(0.0, 0.0, 0.0),
+        Vec3::origin(),
         Vec3::new(0.0, 1.0, 0.0),
         Rgb([237, 201, 175])
     );
