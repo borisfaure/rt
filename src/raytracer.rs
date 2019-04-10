@@ -9,6 +9,7 @@ use crate::scene::{
 use crate::maths::{
     Vec3,
 };
+use rand::Rng;
 use std::f64;
 
 pub struct Hit {
@@ -175,7 +176,7 @@ fn cast_ray(ctx: &RayCtx, scene: &Scene, i: f64, j: f64) -> Rgb<u8> {
     }
 }
 
-pub fn render_scene(scene: &Scene, eye: &Eye, img: &mut RgbImage) {
+pub fn render_scene(scene: &Scene, eye: &Eye, nsamples: u64, img: &mut RgbImage) {
     let ctx = RayCtx::new(&eye, &img);
 
     debug!("rendering scene");
@@ -185,25 +186,28 @@ pub fn render_scene(scene: &Scene, eye: &Eye, img: &mut RgbImage) {
         let j_min = y as f64 / ctx.height;
         let j_max = (y+1) as f64 / ctx.height;
 
-        let i_st = (i_max - i_min) / 4.;
-        let j_st = (j_max - j_min) / 4.;
+        let i_step = i_max - i_min;
+        let j_step = j_max - j_min;
 
-        /* sub pixel aliasing */
-        let p1 = cast_ray(&ctx, scene,
-                          i_min + 1. * i_st,
-                          j_min + 1. * j_st);
-        let p2 = cast_ray(&ctx, scene,
-                          i_min + 1. * i_st,
-                          j_min + 3. * j_st);
-        let p3 = cast_ray(&ctx, scene,
-                          i_min + 3. * i_st,
-                          j_min + 1. * j_st);
-        let p4 = cast_ray(&ctx, scene,
-                          i_min + 3. * i_st,
-                          j_min + 3. * j_st);
-        let r = (p1[0] as u16) + (p2[0] as u16) + (p3[0] as u16) + (p4[0] as u16);
-        let g = (p1[1] as u16) + (p2[1] as u16) + (p3[1] as u16) + (p4[1] as u16);
-        let b = (p1[2] as u16) + (p2[2] as u16) + (p3[2] as u16) + (p4[2] as u16);
-        *pixel = Rgb([(r/4) as u8, (g/4) as u8, (b/4) as u8])
+        let mut r = 0_u64;
+        let mut g = 0_u64;
+        let mut b = 0_u64;
+
+        let mut rng = rand::thread_rng();
+
+        for _ in 0..nsamples {
+            let i = i_min + rng.gen::<f64>() * i_step;
+            let j = j_min + rng.gen::<f64>() * j_step;
+
+            let p = cast_ray(&ctx, scene, i, j);
+            r += p[0] as u64;
+            g += p[1] as u64;
+            b += p[2] as u64;
+        }
+
+        *pixel = Rgb([
+                     (r/nsamples) as u8,
+                     (g/nsamples) as u8,
+                     (b/nsamples) as u8])
     }
 }

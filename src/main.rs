@@ -3,6 +3,7 @@ extern crate image;
 extern crate log;
 extern crate pretty_env_logger;
 extern crate color_scaling;
+extern crate rand;
 
 use image::{
     ImageBuffer,
@@ -57,7 +58,7 @@ fn main() {
     );
     scene.add(floor);
 
-    raytracer::render_scene(&scene, &eye, &mut img);
+    raytracer::render_scene(&scene, &eye, 128_u64, &mut img);
 
     img.save(path).unwrap();
 }
