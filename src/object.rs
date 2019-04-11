@@ -74,7 +74,7 @@ impl Object for Sphere {
         let v = r.origin.to(&self.center);
         let t = v.dot_product(&r.direction);
         let p = r.at(t);
-        let y_sq = self.center.length_sq(&p);
+        let y_sq = self.center.length_sq_to(&p);
         debug!("t:{:?} p:{:?}", t, p);
         debug!("y_sq:{:?} vs rd_sq:{:?}", y_sq, self.rd_sq);
         if y_sq > self.rd_sq {

@@ -152,15 +152,12 @@ impl Ray {
     }
 }
 
-fn cast_ray(ctx: &RayCtx, scene: &Scene, i: f64, j: f64) -> Rgb<u8> {
-    let r = Ray::new(&ctx, i, j);
-    debug!("({:?},{:?}) r:{:?}", i, j, r);
-    assert!(r.direction.z >= 0.);
+fn color(ray: &Ray, scene: &Scene) -> Rgb<u8> {
     let mut distance_min = f64::INFINITY;
     let mut hit_min = Hit::new();
 
     for o in &scene.objects {
-        if let Some(hit) = o.hits(&r) {
+        if let Some(hit) = o.hits(&ray) {
             if hit.t < distance_min {
                 distance_min = hit.t;
                 hit_min = hit;
@@ -170,11 +167,18 @@ fn cast_ray(ctx: &RayCtx, scene: &Scene, i: f64, j: f64) -> Rgb<u8> {
     if distance_min == f64::INFINITY {
         let white : Rgb<u8> = Rgb([255, 255, 255]);
         let blue  : Rgb<u8> = Rgb([ 77, 143, 170]);
-
-        scale_rgb(&blue, &white, j).unwrap()
+        let ud = ray.direction.to_normalized();
+        scale_rgb(&blue, &white, ud.y).unwrap()
     } else {
         hit_min.to_pixel(distance_min)
     }
+}
+
+fn cast_ray_from_eye(ctx: &RayCtx, scene: &Scene, i: f64, j: f64) -> Rgb<u8> {
+    let r = Ray::new(&ctx, i, j);
+    debug!("({:?},{:?}) r:{:?}", i, j, r);
+    assert!(r.direction.z >= 0.);
+    color(&r, scene)
 }
 
 pub fn render_scene(scene: &Scene, eye: &Eye, nsamples: u64, width: u32, height: u32) -> RgbImage {
@@ -205,7 +209,7 @@ pub fn render_scene(scene: &Scene, eye: &Eye, nsamples: u64, width: u32, height:
                 let i = i_min + rng.gen::<f64>() * i_step;
                 let j = j_min + rng.gen::<f64>() * j_step;
 
-                let p = cast_ray(&ctx, scene, i, j);
+                let p = cast_ray_from_eye(&ctx, scene, i, j);
                 r += p[0] as u64;
                 g += p[1] as u64;
                 b += p[2] as u64;

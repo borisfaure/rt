@@ -1,3 +1,5 @@
+use rand::Rng;
+
 pub static EPSILON: f64 = 0.0001;
 
 #[derive(Debug,Clone)]
@@ -20,18 +22,38 @@ impl Vec3 {
         Vec3 { x: 0., y: 0., z: 0., }
     }
 
+    pub fn random_in_unit_sphere() -> Vec3 {
+        let mut rng = rand::thread_rng();
+        loop {
+            let v = Vec3::new(
+                2_f64 * rng.gen::<f64>() - 1_f64,
+                2_f64 * rng.gen::<f64>() - 1_f64,
+                2_f64 * rng.gen::<f64>() - 1_f64);
+            let p = v.length_sq();
+            if p < 1_f64 {
+                break v
+            }
+        }
+    }
     pub fn new_normalized(x: f64, y: f64, z: f64) -> Vec3 {
         let mut v : Vec3 = Vec3::new(x, y ,z);
         v.normalize();
         v
     }
+
     pub fn normalize(&mut self) {
-        let d = (self.x * self.x +
-                 self.y * self.y +
-                 self.z * self.z).sqrt();
+        let d = self.length_sq().sqrt();
         self.x = self.x / d;
         self.y = self.y / d;
         self.z = self.z / d;
+    }
+    pub fn to_normalized(&self) -> Vec3 {
+        let d = self.length_sq().sqrt();
+        Vec3 {
+            x: self.x / d,
+            y: self.y / d,
+            z: self.z / d,
+        }
     }
     pub fn cross_product(&self, v: &Vec3) -> Vec3 {
         Vec3::new(
@@ -39,9 +61,11 @@ impl Vec3 {
             self.z * v.x - self.x * v.z,
             self.x * v.y - self.y * v.x)
     }
+
     pub fn dot_product(&self, v: &Vec3) -> f64 {
         self.x * v.x + self.y * v.y + self.z * v.z
     }
+
     pub fn translate(&self, v: &Vec3, d: f64) -> Vec3 {
         Vec3 {
             x: self.x + v.x * d,
@@ -49,7 +73,14 @@ impl Vec3 {
             z: self.z + v.z * d,
         }
     }
-    pub fn length_sq(&self, p: &Vec3) -> f64 {
+
+    pub fn length_sq(&self) -> f64 {
+        self.x * self.x +
+        self.y * self.y +
+        self.z * self.z
+    }
+
+    pub fn length_sq_to(&self, p: &Vec3) -> f64 {
         (self.x - p.x) * (self.x - p.x) +
         (self.y - p.y) * (self.y - p.y) +
         (self.z - p.z) * (self.z - p.z)
