@@ -8,29 +8,30 @@ use crate::scene::{
     Scene,
 };
 use crate::maths::{
+    EPSILON,
     Vec3,
 };
 use rand::Rng;
 use std::f64;
 use rayon::prelude::*;
 
+pub static DEPTH_MAX : u8 = 8;
+
 pub struct Hit {
-    pub color: Rgb<u8>,
+    pub color: Vec3,
     pub normal : Vec3,
+    pub p : Vec3,
     pub t : f64,
 }
 
 impl Hit {
     fn new() -> Hit {
         Hit {
-            color: Rgb([0, 0, 0]),
-            normal: Vec3::new(0., 0., 0.),
+            color: Vec3::new(0., 0., 0.),
+            normal: Vec3::origin(),
+            p: Vec3::origin(),
             t: 0.
         }
-    }
-    fn to_pixel(&self, _distance: f64) -> Rgb<u8> {
-        /* TODO: */
-        self.color
     }
 }
 
@@ -57,16 +58,14 @@ struct RayCtx {
     p_bottom_left: Vec3,
     width: f64,
     height: f64,
-    hx: f64,
-    hy: f64,
-    qx: Vec3,
-    qy: Vec3,
+    hx: Vec3,
+    hy: Vec3,
 }
 impl RayCtx {
     fn new(eye: &Eye, width: u32, height: u32) -> RayCtx {
         let w = Vec3::new(0., 1., 0.);
-        let b = w.cross_product(&eye.direction);
-        let v = eye.direction.cross_product(&b);
+        let b = w.cross_product(&eye.direction); // →
+        let v = eye.direction.cross_product(&b); // ↑
         debug!("b:{:?} v:{:?}", b, v);
         let d = 1.;
         let c = eye.origin.translate(&eye.direction, d);
@@ -74,37 +73,31 @@ impl RayCtx {
         let width = width as f64;
         let height = height as f64;
         let aspect_ratio = width / height;
+        debug!("eye:{:?} direction:{:?}", eye.origin, eye.direction);
+        debug!("c:{:?}", c);
 
         /* Use 90° as horizontal field of view
          * Tan(π/4) = 1
          */
-        let hx = d;
-        let hy = hx / aspect_ratio;
 
         let p_top_left = Vec3::new(
-            c.x - 0.5 * aspect_ratio * b.x + 0.5 * v.x,
-            c.y - 0.5 * aspect_ratio * b.y + 0.5 * v.y,
-            c.z - 0.5 * aspect_ratio * b.z + 0.5 * v.z);
+            c.x - b.x + v.x / aspect_ratio,
+            c.y - b.y + v.y / aspect_ratio,
+            c.z - b.z + v.z / aspect_ratio);
         let p_top_right = Vec3::new(
-            c.x + 0.5 * aspect_ratio * b.x + 0.5 * v.x,
-            c.y + 0.5 * aspect_ratio * b.y + 0.5 * v.y,
-            c.z + 0.5 * aspect_ratio * b.z + 0.5 * v.z);
+            c.x + b.x + v.x / aspect_ratio,
+            c.y + b.y + v.y / aspect_ratio,
+            c.z + b.z + v.z / aspect_ratio);
         let p_bottom_left = Vec3::new(
-            c.x - 0.5 * aspect_ratio * b.x - 0.5 * v.x,
-            c.y - 0.5 * aspect_ratio * b.y - 0.5 * v.y,
-            c.z - 0.5 * aspect_ratio * b.z - 0.5 * v.z);
+            c.x - b.x - v.x / aspect_ratio,
+            c.y - b.y - v.y / aspect_ratio,
+            c.z - b.z - v.z / aspect_ratio);
         debug!("top_left:{:?} top_right:{:?} bottom_left:{:?}",
                p_top_left, p_top_right, p_bottom_left);
-        let qx = Vec3::new(
-            p_top_right.x - p_top_left.x,
-            p_top_right.y - p_top_left.y,
-            p_top_right.z - p_top_left.z);
-        let qy = Vec3::new(
-            p_bottom_left.x - p_top_left.x,
-            p_bottom_left.y - p_top_left.y,
-            p_bottom_left.z - p_top_left.z);
+        let hx = p_top_left.to(&p_top_right);
+        let hy = p_bottom_left.to(&p_top_left);
 
-        debug!("qx:{:?}, qy:{:?}", qx ,qy);
+        debug!("hx:{:?}, hy:{:?}", hx ,hy);
 
         RayCtx {
             eye: (*eye).clone(),
@@ -119,30 +112,27 @@ impl RayCtx {
             height: height,
             hx: hx,
             hy: hy,
-            qx: qx,
-            qy: qy,
         }
     }
 }
 
 impl Ray {
+    /* i, j in [0,1], in usual direction (origin is bottom left) */
     fn new(ctx: &RayCtx, i: f64, j: f64) -> Ray {
         /* Origin is the eye */
-        let x = ctx.p_top_left.x
-            + i * ctx.qx.x
-            + j * ctx.qy.x
-            - ctx.eye.origin.x;
-        let y = ctx.p_top_left.y
-            + i * ctx.qx.y
-            + j * ctx.qy.y
-            - ctx.eye.origin.y;
-        let z = ctx.p_top_left.z
-            + i * ctx.qx.z
-            + j * ctx.qy.z
-            - ctx.eye.origin.z;
+        let screen_point = Vec3::new(
+            ctx.p_bottom_left.x
+              + i * ctx.hx.x
+              + j * ctx.hy.x,
+            ctx.p_bottom_left.y
+              + i * ctx.hx.y
+              + j * ctx.hy.y,
+            ctx.p_bottom_left.z
+              + i * ctx.hx.z
+              + j * ctx.hy.z);
 
-        debug!("({:?}, {:?}) -> ({:?}, {:?}, {:?})", i,j, x, y , z);
-        let d = Vec3::new_normalized(x, y, z);
+        let mut d = ctx.eye.origin.to(&screen_point);
+        d.normalize();
         let r = Ray {origin: ctx.eye.origin.clone(), direction: d};
         r
     }
@@ -152,33 +142,49 @@ impl Ray {
     }
 }
 
-fn color(ray: &Ray, scene: &Scene) -> Rgb<u8> {
-    let mut distance_min = f64::INFINITY;
+fn lambertian(hit: &Hit, scene: &Scene, depth: u8) -> Vec3 {
+    let u = Vec3::random_in_unit_sphere();
+    let lambertian = Ray {
+        origin: hit.p.clone(),
+        direction: u.add(&hit.normal),
+    };
+    let c = color(&lambertian, &scene, depth+1);
+    c.mult(&hit.color)
+}
+
+fn color(ray: &Ray, scene: &Scene, depth: u8) -> Vec3 {
+    let mut t_min = f64::INFINITY;
     let mut hit_min = Hit::new();
 
     for o in &scene.objects {
-        if let Some(hit) = o.hits(&ray) {
-            if hit.t < distance_min {
-                distance_min = hit.t;
+        if let Some(hit) = o.hits(&ray, 0_f64, t_min) {
+            if hit.t < t_min {
+                t_min = hit.t;
                 hit_min = hit;
             }
         }
     }
-    if distance_min == f64::INFINITY {
+    if t_min == f64::INFINITY {
+        /* ray hit the sky */
         let white : Rgb<u8> = Rgb([255, 255, 255]);
         let blue  : Rgb<u8> = Rgb([ 77, 143, 170]);
         let ud = ray.direction.to_normalized();
-        scale_rgb(&blue, &white, ud.y).unwrap()
+        //assert!(ud.y >= 0_f64);
+        //assert!(ud.y <= 1_f64);
+        scale_rgb(&blue, &white, f64::abs(ud.y)).unwrap().into()
     } else {
-        hit_min.to_pixel(distance_min)
+        if depth > DEPTH_MAX {
+            return Vec3::new(0., 0., 0.);
+        }
+        lambertian(&hit_min, scene, depth)
     }
 }
 
-fn cast_ray_from_eye(ctx: &RayCtx, scene: &Scene, i: f64, j: f64) -> Rgb<u8> {
+fn cast_ray_from_eye(ctx: &RayCtx, scene: &Scene, i: f64, j: f64) -> Vec3 {
     let r = Ray::new(&ctx, i, j);
     debug!("({:?},{:?}) r:{:?}", i, j, r);
     assert!(r.direction.z >= 0.);
-    color(&r, scene)
+    color(&r, scene, 0)
 }
 
 pub fn render_scene(scene: &Scene, eye: &Eye, nsamples: u64, width: u32, height: u32) -> RgbImage {
@@ -187,7 +193,8 @@ pub fn render_scene(scene: &Scene, eye: &Eye, nsamples: u64, width: u32, height:
     let mut buf: Vec<Rgb<u8>> = vec![black; (width * height) as usize];
 
     debug!("rendering scene");
-    buf.par_iter_mut().enumerate().for_each(
+    //buf.par_iter_mut().enumerate().for_each(
+    buf.iter_mut().enumerate().for_each(
         |(n, pixel)| {
             let y = (n as u32) / width;
             let x = (n as u32) - (y * width);
@@ -199,9 +206,9 @@ pub fn render_scene(scene: &Scene, eye: &Eye, nsamples: u64, width: u32, height:
             let i_step = i_max - i_min;
             let j_step = j_max - j_min;
 
-            let mut r = 0_u64;
-            let mut g = 0_u64;
-            let mut b = 0_u64;
+            let mut r = 0_f64;
+            let mut g = 0_f64;
+            let mut b = 0_f64;
 
             let mut rng = rand::thread_rng();
 
@@ -209,16 +216,16 @@ pub fn render_scene(scene: &Scene, eye: &Eye, nsamples: u64, width: u32, height:
                 let i = i_min + rng.gen::<f64>() * i_step;
                 let j = j_min + rng.gen::<f64>() * j_step;
 
-                let p = cast_ray_from_eye(&ctx, scene, i, j);
-                r += p[0] as u64;
-                g += p[1] as u64;
-                b += p[2] as u64;
+                let p = cast_ray_from_eye(&ctx, scene, i, 1_f64 - j);
+                r += p.x;
+                g += p.y;
+                b += p.z;
             }
 
-            *pixel = Rgb([
-                         (r/nsamples) as u8,
-                         (g/nsamples) as u8,
-                         (b/nsamples) as u8])
+            r /= nsamples as f64;
+            g /= nsamples as f64;
+            b /= nsamples as f64;
+            *pixel = Vec3::new(r,g,b).into()
         });
     let mut img : RgbImage = ImageBuffer::new(width, height);
     for n in 0..(width*height) {

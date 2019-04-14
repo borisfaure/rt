@@ -1,4 +1,7 @@
 use rand::Rng;
+use image::{
+    Rgb,
+};
 
 pub static EPSILON: f64 = 0.0001;
 
@@ -24,16 +27,11 @@ impl Vec3 {
 
     pub fn random_in_unit_sphere() -> Vec3 {
         let mut rng = rand::thread_rng();
-        loop {
-            let v = Vec3::new(
-                2_f64 * rng.gen::<f64>() - 1_f64,
-                2_f64 * rng.gen::<f64>() - 1_f64,
-                2_f64 * rng.gen::<f64>() - 1_f64);
-            let p = v.length_sq();
-            if p < 1_f64 {
-                break v
-            }
-        }
+        let v = Vec3::new(
+            1_f64 * rng.gen::<f64>(),
+            1_f64 * rng.gen::<f64>(),
+            1_f64 * rng.gen::<f64>());
+        v.to_normalized()
     }
     pub fn new_normalized(x: f64, y: f64, z: f64) -> Vec3 {
         let mut v : Vec3 = Vec3::new(x, y ,z);
@@ -99,8 +97,60 @@ impl Vec3 {
             z: from.z + t * self.z,
         }
     }
+    pub fn add(&self, b: &Vec3) -> Vec3 {
+        Vec3 {
+            x: self.x + b.x,
+            y: self.y + b.y,
+            z: self.z + b.z,
+        }
+    }
+    pub fn mult(&self, b: &Vec3) -> Vec3 {
+        Vec3 {
+            x: self.x * b.x,
+            y: self.y * b.y,
+            z: self.z * b.z,
+        }
+    }
+    pub fn div(&mut self, d: f64) {
+        self.x /= d;
+        self.y /= d;
+        self.z /= d;
+    }
+    pub fn invert(&mut self) {
+        self.x *= -1.;
+        self.y *= -1.;
+        self.z *= -1.;
+    }
 }
 
 pub fn remap_01(a: f64, b: f64, t: f64) -> f64 {
     (t - a) / (b - a)
+}
+
+impl Into<Rgb<u8>> for Vec3 {
+    fn into(self) -> Rgb<u8> {
+        let convert = |v| {
+            if v <= 0_f64 {
+                return 0_u8;
+            }
+            if v >= 1_f64 {
+                return 255_u8;
+            }
+            (v * 256_f64) as u8
+        };
+        let r = convert(self.x);
+        let g = convert(self.y);
+        let b = convert(self.z);
+        Rgb([r, g, b])
+    }
+}
+
+impl Into<Vec3> for Rgb<u8> {
+    fn into(self) -> Vec3 {
+        Vec3 {
+            x: (self[0] as f64) / 256_f64,
+            y: (self[1] as f64) / 256_f64,
+            z: (self[2] as f64) / 256_f64,
+        }
+    }
 }

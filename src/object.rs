@@ -14,37 +14,39 @@ use crate::maths::{
 
 
 pub trait Object {
-    fn hits(&self, r: &Ray) -> Option<Hit>;
+    fn hits(&self, r: &Ray, tmin: f64, tmax: f64) -> Option<Hit>;
 }
 
 pub struct Plan {
     p: Vec3,
     normal: Vec3,
-    color: Rgb<u8>,
+    color: Vec3,
 }
 impl Plan {
     pub fn new(p: Vec3, normal: Vec3, color: Rgb<u8>) -> Plan {
         Plan {
             p: p,
             normal: normal,
-            color: color,
+            color: color.into(),
         }
     }
 }
 impl Object for Plan {
-    fn hits(&self, r: &Ray) -> Option<Hit> {
-        let dn = r.direction.dot_product(&self.normal);
+    fn hits(&self, ray: &Ray, tmin: f64, tmax: f64) -> Option<Hit> {
+        let dn = ray.direction.dot_product(&self.normal);
         if dn >= EPSILON {
             return None;
         }
-        let to_plan = r.origin.to(&self.p);
+        let to_plan = ray.origin.to(&self.p);
         let t = to_plan.dot_product(&self.normal) / dn;
-        if t <= EPSILON {
+        if t <= tmin || t >= tmax {
             return None;
         }
+        let p = ray.at(t);
         let h = Hit {
             color: self.color.clone(),
             normal: self.normal.clone(),
+            p: p,
             t: t,
         };
         Some(h)
@@ -56,7 +58,7 @@ pub struct Sphere {
     center: Vec3,
     radius: f64,
     rd_sq: f64,
-    color: Rgb<u8>,
+    color: Vec3,
 }
 impl Sphere {
     pub fn new(center: Vec3, radius: f64, color: Rgb<u8>) -> Sphere {
@@ -64,36 +66,48 @@ impl Sphere {
             center: center,
             radius: radius,
             rd_sq: radius * radius,
-            color: color
+            color: color.into()
         }
     }
 }
 
 impl Object for Sphere {
-    fn hits(&self, r: &Ray) -> Option<Hit> {
-        let v = r.origin.to(&self.center);
-        let t = v.dot_product(&r.direction);
-        let p = r.at(t);
-        let y_sq = self.center.length_sq_to(&p);
-        debug!("t:{:?} p:{:?}", t, p);
-        debug!("y_sq:{:?} vs rd_sq:{:?}", y_sq, self.rd_sq);
-        if y_sq > self.rd_sq {
+    fn hits(&self, ray: &Ray, tmin: f64, tmax: f64) -> Option<Hit> {
+        let oc = self.center.to(&ray.origin);
+        let a = ray.direction.dot_product(&ray.direction);
+        let b = oc.dot_product(&ray.direction);
+        let c = oc.dot_product(&oc) - self.rd_sq;
+        let discrimant = b*b - a*c;
+        if discrimant <= 0_f64 {
             return None;
         }
-        let x = f64::sqrt(self.rd_sq - y_sq);
-        let t1 = t - x;
-        //let t2 = t + x;
-        let to_center = f64::sqrt(v.dot_product(&v));
-        let s = remap_01(to_center, to_center - self.radius, t1);
-        let p = r.at(t1);
-        let mut n = self.center.to(&p);
-        n.normalize();
-        let black : Rgb<u8> = Rgb([0, 0, 0]);
-        let h = Hit {
-            color: scale_rgb(&black, &self.color, s).unwrap(),
-            normal: n,
-            t: t1,
-        };
-        Some(h)
+        let discrimant_sqrt = discrimant.sqrt();
+        let t1 = (-b - discrimant_sqrt ) / a;
+        if tmin < t1 && t1 < tmax {
+            let p = ray.at(t1);
+            let mut n = self.center.to(&p);
+            n.div(self.radius);
+            let h = Hit {
+                color: self.color.clone(),
+                normal: n,
+                p: p,
+                t: t1,
+            };
+            return Some(h);
+        }
+        let t2 = (-b + discrimant_sqrt ) / a;
+        if tmin < t2 && t2 < tmax {
+            let p = ray.at(t2);
+            let mut n = self.center.to(&p);
+            n.div(self.radius);
+            let h = Hit {
+                color: self.color.clone(),
+                normal: n,
+                p: p,
+                t: t2,
+            };
+            return Some(h);
+        }
+        None
     }
 }
