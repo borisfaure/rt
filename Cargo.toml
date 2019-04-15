@@ -1,5 +1,5 @@
 [package]
-name = "trees"
+name = "forest"
 version = "0.1.0"
 authors = [ "Boris Faure <billiob@gmail.com>" ]
 license = "BSD-2-Clause"
