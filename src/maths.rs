@@ -2,6 +2,7 @@ use rand::Rng;
 use image::{
     Rgb,
 };
+use std::mem;
 
 pub static EPSILON: f64 = 0.0001;
 
@@ -152,5 +153,130 @@ impl Into<Vec3> for Rgb<u8> {
             y: (self[1] as f64) / 256_f64,
             z: (self[2] as f64) / 256_f64,
         }
+    }
+}
+
+
+#[derive(Debug,Clone)]
+struct Row4 {
+    a: f64,
+    b: f64,
+    c: f64,
+    d: f64,
+}
+
+pub fn solve_3variable_system(a: &Vec3, b: &Vec3, c: &Vec3, p: &Vec3) -> Option<Vec3> {
+    let mut r1 = Row4{a: a.x, b: b.x, c: c.x, d: p.x};
+    let mut r2 = Row4{a: a.y, b: b.y, c: c.y, d: p.y};
+    let mut r3 = Row4{a: a.z, b: b.z, c: c.z, d: p.z};
+
+    let mut shuffle = Vec3{x: 1., y: 2., z: 3.};
+    if r1.a == 0. {
+        if r2.a != 0. {
+            /* Swap Row1 and Row2 */
+            mem::swap(&mut r1, &mut r2);
+            mem::swap(&mut shuffle.x, &mut shuffle.y);
+        } else if r3.a != 0. {
+            /* Swap Row1 and Row3 */
+            mem::swap(&mut r1, &mut r3);
+            mem::swap(&mut shuffle.x, &mut shuffle.z);
+        } else {
+            return None;
+        }
+    }
+    if r2.b == 0. {
+        if r3.b != 0. {
+            /* Swap Row2 and Row3 */
+            mem::swap(&mut r2, &mut r3);
+            mem::swap(&mut shuffle.y, &mut shuffle.z);
+        } else {
+            return None;
+        }
+    }
+    if r3.c == 0. {
+        return None;
+    }
+
+    // 1st step, put a 0 in r3.a using r1 and r3 rows
+    if r3.a != 0. {
+        let f1 = r1.a;
+        let f3 = r3.a;
+        r3.a = f1 * r3.a - f3 * r1.a;
+        r3.b = f1 * r3.b - f3 * r1.b;
+        r3.c = f1 * r3.c - f3 * r1.c;
+        r3.d = f1 * r3.d - f3 * r1.d;
+        assert!(r3.a == 0.);
+    }
+
+    // 2nd step, put a 0 in r2.a using r1 and r2 rows
+    if r2.a != 0. {
+        let f1 = r1.a;
+        let f2 = r2.a;
+        r2.a = f1 * r2.a - f2 * r1.a;
+        r2.b = f1 * r2.b - f2 * r1.b;
+        r2.c = f1 * r2.c - f2 * r1.c;
+        r2.d = f1 * r2.d - f2 * r1.d;
+        assert!(r2.a == 0.);
+    }
+
+    // 3rd step, put a 0 in r2.b using r2 and r3 rows
+    if r2.b != 0. {
+        let f2 = r2.b;
+        let f3 = r3.b;
+        r3.a = f2 * r3.a - f3 * r2.a;
+        r3.b = f2 * r3.b - f3 * r2.b;
+        r3.c = f2 * r3.c - f3 * r2.c;
+        r3.d = f2 * r3.d - f3 * r2.d;
+        assert!(r3.a == 0.);
+    }
+
+    if r3.c == 0. || r2.b == 0. || r1.a == 0. {
+        return None
+    }
+
+    let mut r = Vec3::origin();
+    /* Compute the solution */
+    r.z = r3.d / r3.c;
+    r.y = (r2.d - r.z * r2.c) / r2.b;
+    r.x = (r1.d - r.z * r1.c - r.y * r1.b) / r1.a;
+
+    /* Shuffle back */
+    if shuffle.x != 1. {
+        if shuffle.y == 1. {
+            mem::swap(&mut r.x, &mut r.y);
+            mem::swap(&mut shuffle.x, &mut shuffle.y);
+        } else {
+            mem::swap(&mut r.x, &mut r.z);
+            mem::swap(&mut shuffle.x, &mut shuffle.z);
+        }
+    }
+    if shuffle.y != 2. {
+            mem::swap(&mut r.y, &mut r.z);
+            mem::swap(&mut shuffle.y, &mut shuffle.z);
+    }
+    assert!(shuffle.x == 1.);
+    assert!(shuffle.y == 2.);
+    assert!(shuffle.z == 3.);
+
+    return Some(r)
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn solve_3variable_system_test() {
+        let a = Vec3::new(2., 5., -2.);
+        let b = Vec3::new(3., -1., -2.);
+        let c = Vec3::new(-4., 2., 3.);
+        let p = Vec3::new(-5., 15., 3.);
+        let r = solve_3variable_system(&a, &b, &c, &p);
+        assert!(r.is_some());
+        let r = r.unwrap();
+        assert_eq!(r.x, 2.);
+        assert_eq!(r.y, 1.);
+        assert_eq!(r.z, 3.);
     }
 }
