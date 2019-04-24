@@ -29,6 +29,7 @@ use maths::{
 use object::{
     Plan,
     Sphere,
+    Triangle,
 };
 
 fn main() {
@@ -66,6 +67,7 @@ fn main() {
         scene.add(sphere);
     }
 
+    /*
     {
         let sphere = Sphere::new(
             Vec3::new(0., 2.5, 4.),
@@ -89,6 +91,16 @@ fn main() {
             Rgb([255, 127, 0])
             );
         scene.add(sphere);
+    }
+    */
+    {
+        let triangle = Triangle::new(
+            Vec3::new(-2., 2., 4.),
+            Vec3::new(2., -1., 4.),
+            Vec3::new(-2., -1., 4.),
+            Rgb([255, 0, 0])
+        );
+        scene.add(triangle);
     }
 
     {

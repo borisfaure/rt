@@ -10,6 +10,7 @@ use crate::maths::{
     EPSILON,
     remap_01,
     Vec3,
+    solve_3variable_system,
 };
 
 
@@ -17,6 +18,7 @@ pub trait Object {
     fn hits(&self, r: &Ray, tmin: f64, tmax: f64) -> Option<Hit>;
 }
 
+/* {{{ Plan */
 pub struct Plan {
     p: Vec3,
     normal: Vec3,
@@ -53,7 +55,8 @@ impl Object for Plan {
     }
 }
 
-
+/* }}} */
+/* {{{ Sphere */
 pub struct Sphere {
     center: Vec3,
     radius: f64,
@@ -111,3 +114,60 @@ impl Object for Sphere {
         None
     }
 }
+
+/* }}} */
+/* Triangle {{{ */
+
+pub struct Triangle {
+    a: Vec3,
+    b: Vec3,
+    c: Vec3,
+    normal: Vec3,
+    color: Vec3,
+}
+impl Triangle {
+    pub fn new(a: Vec3, b: Vec3, c: Vec3, color: Rgb<u8>) -> Triangle {
+        let ab = a.to(&b);
+        let ac = a.to(&c);
+        let mut normal = ab.cross_product(&ac);
+        normal.normalize();
+        Triangle {
+            a: a,
+            b: b,
+            c: c,
+            normal: normal,
+            color: color.into(),
+        }
+    }
+}
+impl Object for Triangle {
+    fn hits(&self, ray: &Ray, tmin: f64, tmax: f64) -> Option<Hit> {
+        /* find intersection with the plan */
+        let dn = ray.direction.dot_product(&self.normal);
+        if dn >= 0. {
+            return None;
+        }
+        let to_plan = ray.origin.to(&self.a);
+        let t = to_plan.dot_product(&self.normal) / dn;
+        if t <= tmin || t >= tmax {
+            return None;
+        }
+        let p = ray.at(t);
+        let o = solve_3variable_system(&self.a, &self.b, &self.c, &p);
+        if let Some(w) = o {
+            if w.x < 0. || w.y < 0. || w.z < 0. {
+                return None
+            }
+            error!("HIT");
+            let h = Hit {
+                color: self.color.clone(),
+                normal: self.normal.clone(),
+                p: p,
+                t: t,
+            };
+            return Some(h);
+        }
+        return None;
+    }
+}
+/* }}} */
