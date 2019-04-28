@@ -30,7 +30,9 @@ use object::{
     Plan,
     Sphere,
     Triangle,
+    Tetrahedron,
 };
+use std::f64::consts::PI;
 
 fn main() {
     pretty_env_logger::init();
@@ -92,17 +94,35 @@ fn main() {
             );
         scene.add(sphere);
     }
-    */
     {
         let triangle = Triangle::new(
             Vec3::new(-2., 2., 4.),
-            Vec3::new(2., -1., 4.),
             Vec3::new(-2., -1., 4.),
+            Vec3::new(2., -1., 4.),
             Rgb([255, 0, 0])
         );
         scene.add(triangle);
     }
-
+    */
+    {
+        let tetrahedron = Tetrahedron::new(
+            Vec3::new(0., 3., 4.),
+            3., 2., 5. * PI/6.,
+            Rgb([34, 139, 34])
+            );
+        scene.add(tetrahedron);
+    }
+    /*
+    {
+        let triangle = Triangle::new(
+            Vec3::new(-0.00000000000000036739403974420594, 0., 2.),
+            Vec3::new(1.732050807568878, 0., 4.999999999999998),
+            Vec3::new(0., 3., 4.),
+            Rgb([255, 0, 0])
+        );
+        scene.add(triangle);
+    }
+    */
     {
         let sphere = Sphere::new(
             Vec3::new(3., 2.5, 4.),

@@ -179,3 +179,57 @@ impl Object for Triangle {
     }
 }
 /* }}} */
+/* Tetrahedron {{{ */
+
+pub struct Tetrahedron {
+    base: Triangle,
+    side1: Triangle,
+    side2: Triangle,
+    side3: Triangle,
+    color: Vec3,
+}
+impl Tetrahedron {
+    pub fn new(top: Vec3, height: f64, width: f64, angle: f64, color: Rgb<u8>) -> Tetrahedron {
+        assert!(0. <= angle && angle <= 2. * PI);
+        let bottom_center = Vec3::new(top.x, top.y - height, top.z);
+        let A = Vec3::new(
+            bottom_center.x + width * (angle + 2. * PI / 3.).cos(),
+            bottom_center.y,
+            bottom_center.z + width * (angle + 2. * PI / 3.).sin()
+        );
+        let B = Vec3::new(
+            bottom_center.x + width * (angle + 4. * PI / 3.).cos(),
+            bottom_center.y,
+            bottom_center.z + width * (angle + 4. * PI / 3.).sin()
+        );
+        let C = Vec3::new(
+            bottom_center.x + width * (angle).cos(),
+            bottom_center.y,
+            bottom_center.z + width * (angle).sin()
+        );
+        info!("A:{:?} B:{:?} C:{:?} bottom_center:{:?}", A, B, C, bottom_center);
+        Tetrahedron {
+            base: Triangle::new_ref(&A, &B, &C, &color),
+            side1: Triangle::new_ref(&A, &B, &top, &color),
+            side2: Triangle::new_ref(&B, &C, &top, &color),
+            side3: Triangle::new_ref(&C, &A, &top, &color),
+            color: color.into(),
+        }
+    }
+}
+impl Object for Tetrahedron {
+    fn hits(&self, ray: &Ray, tmin: f64, tmax: f64) -> Option<Hit> {
+        let mut t_min = f64::INFINITY;
+        let mut hit_min = None;
+        for o in vec![&self.base, &self.side1, &self.side2, &self.side3] {
+            if let Some(hit) = o.hits(&ray, 0_f64, t_min) {
+                if hit.t < t_min  && hit.t >= tmin && hit.t <= tmax {
+                    t_min = hit.t;
+                    hit_min = Some(hit);
+                }
+            }
+        }
+        hit_min
+    }
+}
+/* }}} */
