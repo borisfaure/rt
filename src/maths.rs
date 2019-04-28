@@ -112,19 +112,24 @@ impl Vec3 {
             z: from.z + t * self.z,
         }
     }
-    pub fn add(&self, b: &Vec3) -> Vec3 {
+    pub fn addv(&self, b: &Vec3) -> Vec3 {
         Vec3 {
             x: self.x + b.x,
             y: self.y + b.y,
             z: self.z + b.z,
         }
     }
-    pub fn mult(&self, b: &Vec3) -> Vec3 {
+    pub fn multv(&self, b: &Vec3) -> Vec3 {
         Vec3 {
             x: self.x * b.x,
             y: self.y * b.y,
             z: self.z * b.z,
         }
+    }
+    pub fn mult(&mut self, d: f64) {
+        self.x *= d;
+        self.y *= d;
+        self.z *= d;
     }
     pub fn div(&mut self, d: f64) {
         self.x /= d;

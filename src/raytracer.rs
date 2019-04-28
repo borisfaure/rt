@@ -30,7 +30,7 @@ impl Hit {
             color: Vec3::new(0., 0., 0.),
             normal: Vec3::origin(),
             p: Vec3::origin(),
-            t: 0.
+            t: f64::INFINITY,
         }
     }
 }
@@ -146,25 +146,29 @@ fn lambertian(hit: &Hit, scene: &Scene, depth: u8) -> Vec3 {
     let u = Vec3::random_in_unit_sphere();
     let lambertian = Ray {
         origin: hit.p.clone(),
-        direction: u.add(&hit.normal),
+        direction: u.addv(&hit.normal),
     };
     let c = color(&lambertian, &scene, depth+1);
-    c.mult(&hit.color)
+    c.multv(&hit.color)
 }
 
-fn color(ray: &Ray, scene: &Scene, depth: u8) -> Vec3 {
-    let mut t_min = f64::INFINITY;
+fn hits(ray: &Ray, scene: &Scene) -> Hit {
     let mut hit_min = Hit::new();
 
     for o in &scene.objects {
-        if let Some(hit) = o.hits(&ray, 0_f64, t_min) {
-            if hit.t < t_min {
-                t_min = hit.t;
+        if let Some(hit) = o.hits(&ray, 0_f64, hit_min.t) {
+            if hit.t < hit_min.t {
                 hit_min = hit;
             }
         }
     }
-    if t_min == f64::INFINITY {
+    hit_min
+}
+
+fn color(ray: &Ray, scene: &Scene, depth: u8) -> Vec3 {
+    let mut hit_min = hits(ray, scene);
+
+    if hit_min.t == f64::INFINITY {
         /* ray hit the sky */
         let white : Rgb<u8> = Rgb([255, 255, 255]);
         let blue  : Rgb<u8> = Rgb([ 77, 143, 170]);
@@ -174,14 +178,31 @@ fn color(ray: &Ray, scene: &Scene, depth: u8) -> Vec3 {
         scale_rgb(&blue, &white, f64::abs(ud.y)).unwrap().into()
     } else {
         let with_lambertian = true;
+        let with_shadows = true;
+        let mut c : Vec3;
         if with_lambertian {
             if depth > DEPTH_MAX {
                 return Vec3::new(0., 0., 0.);
             }
-            lambertian(&hit_min, scene, depth)
+            c = lambertian(&hit_min, scene, depth);
         } else {
-            hit_min.color
+            c = hit_min.color;
         }
+        if with_shadows {
+            if let Some((ref sun, ref sun_color, ref softness)) = scene.sun {
+                let start = hit_min.normal.at(&hit_min.p, EPSILON);
+                let sun_ray = Ray {
+                    origin: start,
+                    direction: sun.clone(),
+                };
+                let sun_hit = hits(&sun_ray, scene);
+                if sun_hit.t == f64::INFINITY {
+                } else {
+                    c.mult(*softness)
+                }
+            }
+        }
+        c
     }
 }
 
