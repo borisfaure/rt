@@ -4,7 +4,7 @@ use image::{
 };
 use std::mem;
 
-pub static EPSILON: f64 = 0.0001;
+pub static EPSILON: f64 = 0.00001;
 
 #[derive(Debug,Clone)]
 pub struct Vec3 {
