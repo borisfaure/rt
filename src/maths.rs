@@ -29,9 +29,9 @@ impl Vec3 {
     pub fn random_in_unit_sphere() -> Vec3 {
         let mut rng = rand::thread_rng();
         let v = Vec3::new(
-            1_f64 * rng.gen::<f64>(),
-            1_f64 * rng.gen::<f64>(),
-            1_f64 * rng.gen::<f64>());
+            2_f64 * rng.gen::<f64>() - 1_f64,
+            2_f64 * rng.gen::<f64>() - 1_f64,
+            2_f64 * rng.gen::<f64>() - 1_f64);
         v.to_normalized()
     }
     pub fn new_normalized(x: f64, y: f64, z: f64) -> Vec3 {
