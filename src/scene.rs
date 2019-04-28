@@ -2,6 +2,9 @@ use crate::object::Object;
 use crate::maths::{
     Vec3,
 };
+use image::{
+    Rgb,
+};
 
 
 pub struct Scene {
@@ -26,7 +29,7 @@ impl Scene {
         self.set_sun(
             Some(
                 (Vec3::new(3., 1., 0.),
-                Vec3::new(1.,1.,1.),
+                 Rgb([242, 144, 45]).into(),
                 0.6)));
     }
 }

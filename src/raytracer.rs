@@ -197,8 +197,9 @@ fn color(ray: &Ray, scene: &Scene, depth: u8) -> Vec3 {
                 };
                 let sun_hit = hits(&sun_ray, scene);
                 if sun_hit.t == f64::INFINITY {
+                    c.mix(sun_color, 1. - *softness);
                 } else {
-                    c.mult(*softness)
+                    c.mult(*softness);
                 }
             }
         }

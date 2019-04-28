@@ -141,6 +141,12 @@ impl Vec3 {
         self.y *= -1.;
         self.z *= -1.;
     }
+
+    pub fn mix(&mut self, v: &Vec3, c: f64) {
+        self.x = self.x * (1. - c) + v.x * c;
+        self.y = self.y * (1. - c) + v.y * c;
+        self.z = self.z * (1. - c) + v.z * c;
+    }
 }
 
 pub fn remap_01(a: f64, b: f64, t: f64) -> f64 {
