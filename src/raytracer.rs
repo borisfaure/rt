@@ -173,10 +173,15 @@ fn color(ray: &Ray, scene: &Scene, depth: u8) -> Vec3 {
         //assert!(ud.y <= 1_f64);
         scale_rgb(&blue, &white, f64::abs(ud.y)).unwrap().into()
     } else {
-        if depth > DEPTH_MAX {
-            return Vec3::new(0., 0., 0.);
+        let with_lambertian = true;
+        if with_lambertian {
+            if depth > DEPTH_MAX {
+                return Vec3::new(0., 0., 0.);
+            }
+            lambertian(&hit_min, scene, depth)
+        } else {
+            hit_min.color
         }
-        lambertian(&hit_min, scene, depth)
     }
 }
 
