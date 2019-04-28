@@ -39,6 +39,20 @@ impl Vec3 {
         v.normalize();
         v
     }
+    pub fn new_clean(&self) -> Vec3 {
+        let cleanup = |v| {
+            if -EPSILON  <= v && v <= EPSILON {
+                0_f64
+            } else {
+                v
+            }
+        };
+        Vec3 {
+            x: cleanup(self.x),
+            y: cleanup(self.y),
+            z: cleanup(self.z),
+        }
+    }
 
     pub fn normalize(&mut self) {
         let d = self.length_sq().sqrt();
@@ -155,6 +169,16 @@ impl Into<Vec3> for Rgb<u8> {
         }
     }
 }
+impl Into<Vec3> for &Rgb<u8> {
+    fn into(self) -> Vec3 {
+        Vec3 {
+            x: (self[0] as f64) / 256_f64,
+            y: (self[1] as f64) / 256_f64,
+            z: (self[2] as f64) / 256_f64,
+        }
+    }
+}
+
 
 
 #[derive(Debug,Clone)]

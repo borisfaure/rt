@@ -1,4 +1,3 @@
-use color_scaling::scale_rgb;
 use image::{
     Rgb,
 };
@@ -8,9 +7,12 @@ use crate::raytracer::{
 };
 use crate::maths::{
     EPSILON,
-    remap_01,
     Vec3,
     solve_3variable_system,
+};
+use std::f64::{
+    self,
+    consts::PI,
 };
 
 
@@ -127,9 +129,16 @@ pub struct Triangle {
 }
 impl Triangle {
     pub fn new(a: Vec3, b: Vec3, c: Vec3, color: Rgb<u8>) -> Triangle {
-        let ab = a.to(&b);
-        let ac = a.to(&c);
-        let mut normal = ab.cross_product(&ac);
+        Triangle::new_ref(&a, &b, &c, &color)
+    }
+    pub fn new_ref(a: &Vec3, b: &Vec3, c: &Vec3, color: &Rgb<u8>) -> Triangle {
+        let a = a.new_clean();
+        let b = b.new_clean();
+        let c = c.new_clean();
+
+        let ba = b.to(&a);
+        let bc = b.to(&c);
+        let mut normal = ba.cross_product(&bc);
         normal.normalize();
         Triangle {
             a: a,
@@ -155,10 +164,9 @@ impl Object for Triangle {
         let p = ray.at(t);
         let o = solve_3variable_system(&self.a, &self.b, &self.c, &p);
         if let Some(w) = o {
-            if w.x < 0. || w.y < 0. || w.z < 0. {
-                return None
+            if w.x < 0.|| w.y < 0. || w.z < 0. {
+                return None;
             }
-            error!("HIT");
             let h = Hit {
                 color: self.color.clone(),
                 normal: self.normal.clone(),
