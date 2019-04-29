@@ -170,12 +170,22 @@ fn color(ray: &Ray, scene: &Scene, depth: u8) -> Vec3 {
 
     if hit_min.t == f64::INFINITY {
         /* ray hit the sky */
-        let white : Rgb<u8> = Rgb([255, 255, 255]);
-        let blue  : Rgb<u8> = Rgb([ 77, 143, 170]);
+        let daylight = true;
+        let c1 : Rgb<u8>;
+        let c2 : Rgb<u8>;
+        if daylight {
+            /* daylight */
+            c1 = Rgb([255, 255, 255]);
+            c2 = Rgb([ 77, 143, 170]);
+        } else {
+            /* dusk */
+            c1 = Rgb([20, 24, 42]);
+            c2 = Rgb([43, 47, 82]);
+        }
         let ud = ray.direction.to_normalized();
         //assert!(ud.y >= 0_f64);
         //assert!(ud.y <= 1_f64);
-        scale_rgb(&blue, &white, f64::abs(ud.y)).unwrap().into()
+        scale_rgb(&c2, &c1, f64::abs(ud.y)).unwrap().into()
     } else {
         let with_lambertian = true;
         let with_shadows = true;

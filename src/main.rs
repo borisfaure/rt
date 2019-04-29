@@ -159,6 +159,8 @@ fn main() {
 
     /* golden hour */
     scene.set_golden_sun();
+    /* blue hour */
+    //scene.set_blue_sun();
 
     let img : RgbImage = raytracer::render_scene(&scene,
                                                  &eye,

@@ -28,8 +28,15 @@ impl Scene {
     pub fn set_golden_sun(&mut self) {
         self.set_sun(
             Some(
-                (Vec3::new(3., 1., 0.),
+                (Vec3::new(3., 1., -1.),
                  Rgb([242, 144, 45]).into(),
                 0.6)));
+    }
+    pub fn set_blue_sun(&mut self) {
+        self.set_sun(
+            Some(
+                (Vec3::new(-3., 1., 0.),
+                 Rgb([21, 116, 196]).into(),
+                0.9)));
     }
 }
