@@ -230,8 +230,8 @@ pub fn render_scene(scene: &Scene, eye: &Eye, nsamples: u64, width: u32, height:
     let mut buf: Vec<Rgb<u8>> = vec![black; (width * height) as usize];
 
     debug!("rendering scene");
-    //buf.par_iter_mut().enumerate().for_each(
-    buf.iter_mut().enumerate().for_each(
+    buf.par_iter_mut().enumerate().for_each(
+    //buf.iter_mut().enumerate().for_each(
         |(n, pixel)| {
             let y = (n as u32) / width;
             let x = (n as u32) - (y * width);
