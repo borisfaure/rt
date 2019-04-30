@@ -42,13 +42,19 @@ pub struct Eye {
 }
 
 #[derive(Debug,Clone)]
+pub struct Screen {
+    pub width : u32,
+    pub height : u32,
+}
+#[derive(Debug,Clone)]
 pub struct Ray {
     pub origin: Vec3,
     pub direction: Vec3,
 }
 
-struct RayCtx {
+pub struct RayCtx {
     eye: Eye,
+    screen: Screen,
     w: Vec3,
     b: Vec3,
     v: Vec3,
@@ -62,7 +68,7 @@ struct RayCtx {
     hy: Vec3,
 }
 impl RayCtx {
-    fn new(eye: &Eye, width: u32, height: u32) -> RayCtx {
+    pub fn new(eye: &Eye, screen: &Screen) -> RayCtx {
         let w = Vec3::new(0., 1., 0.);
         let b = w.cross_product(&eye.direction); // →
         let v = eye.direction.cross_product(&b); // ↑
@@ -70,8 +76,8 @@ impl RayCtx {
         let d = 1.;
         let c = eye.origin.translate(&eye.direction, d);
         // Obtain the image's width and height.
-        let width = width as f64;
-        let height = height as f64;
+        let width = screen.width as f64;
+        let height = screen.height as f64;
         let aspect_ratio = width / height;
         debug!("eye:{:?} direction:{:?}", eye.origin, eye.direction);
         debug!("c:{:?}", c);
@@ -101,6 +107,7 @@ impl RayCtx {
 
         RayCtx {
             eye: (*eye).clone(),
+            screen: (*screen).clone(),
             w: w,
             b: b,
             v: v,
@@ -114,6 +121,64 @@ impl RayCtx {
             hy: hy,
         }
     }
+    pub fn render_scene(&self, scene: &Scene, nsamples: u64) -> RgbImage {
+        let black : Rgb<u8> = Rgb([0, 0, 0]);
+        let mut buf: Vec<Rgb<u8>> = vec![black; (self.screen.width * self.screen.height) as usize];
+
+        debug!("rendering scene");
+        buf.par_iter_mut().enumerate().for_each(
+            //buf.iter_mut().enumerate().for_each(
+            |(n, pixel)| {
+                let y = (n as u32) / self.screen.width;
+                let x = (n as u32) - (y * self.screen.width);
+                let i_min = x as f64 / self.width;
+                let i_max = (x+1) as f64 / self.width;
+                let j_min = y as f64 / self.height;
+                let j_max = (y+1) as f64 / self.height;
+
+                let i_step = i_max - i_min;
+                let j_step = j_max - j_min;
+
+                let mut r = 0_f64;
+                let mut g = 0_f64;
+                let mut b = 0_f64;
+
+                let mut rng = rand::thread_rng();
+
+                for _ in 0..nsamples {
+                    let i = i_min + rng.gen::<f64>() * i_step;
+                    let j = j_min + rng.gen::<f64>() * j_step;
+
+                    let p = self.cast_ray_from_eye(scene, i, 1_f64 - j);
+                    r += p.x;
+                    g += p.y;
+                    b += p.z;
+                }
+
+                r /= nsamples as f64;
+                g /= nsamples as f64;
+                b /= nsamples as f64;
+                *pixel = Vec3::new(r,g,b).into()
+            });
+        let mut img : RgbImage = ImageBuffer::new(self.screen.width,
+                                                  self.screen.height);
+        for n in 0..(self.screen.width * self.screen.height) {
+            let y = (n as u32) / self.screen.width;
+            let x = (n as u32) - (y * self.screen.width);
+            img.put_pixel(x, y, buf[n as usize]);
+        };
+
+        img
+    }
+
+    fn cast_ray_from_eye(&self, scene: &Scene, i: f64, j: f64) -> Vec3 {
+        let r = Ray::new(&self, i, j);
+        debug!("({:?},{:?}) r:{:?}", i, j, r);
+        assert!(r.direction.z >= 0.);
+        color(&r, scene, 0)
+    }
+
+
 }
 
 impl Ray {
@@ -217,59 +282,17 @@ fn color(ray: &Ray, scene: &Scene, depth: u8) -> Vec3 {
     }
 }
 
-fn cast_ray_from_eye(ctx: &RayCtx, scene: &Scene, i: f64, j: f64) -> Vec3 {
-    let r = Ray::new(&ctx, i, j);
-    debug!("({:?},{:?}) r:{:?}", i, j, r);
-    assert!(r.direction.z >= 0.);
-    color(&r, scene, 0)
+/*
+pub struct Footprint {
+    ne: f64,
+    nw: f64,
+    se: f64,
+    sw: f64,
 }
-
-pub fn render_scene(scene: &Scene, eye: &Eye, nsamples: u64, width: u32, height: u32) -> RgbImage {
-    let ctx = RayCtx::new(&eye, width, height);
-    let black : Rgb<u8> = Rgb([0, 0, 0]);
-    let mut buf: Vec<Rgb<u8>> = vec![black; (width * height) as usize];
-
-    debug!("rendering scene");
-    buf.par_iter_mut().enumerate().for_each(
-    //buf.iter_mut().enumerate().for_each(
-        |(n, pixel)| {
-            let y = (n as u32) / width;
-            let x = (n as u32) - (y * width);
-            let i_min = x as f64 / ctx.width;
-            let i_max = (x+1) as f64 / ctx.width;
-            let j_min = y as f64 / ctx.height;
-            let j_max = (y+1) as f64 / ctx.height;
-
-            let i_step = i_max - i_min;
-            let j_step = j_max - j_min;
-
-            let mut r = 0_f64;
-            let mut g = 0_f64;
-            let mut b = 0_f64;
-
-            let mut rng = rand::thread_rng();
-
-            for _ in 0..nsamples {
-                let i = i_min + rng.gen::<f64>() * i_step;
-                let j = j_min + rng.gen::<f64>() * j_step;
-
-                let p = cast_ray_from_eye(&ctx, scene, i, 1_f64 - j);
-                r += p.x;
-                g += p.y;
-                b += p.z;
-            }
-
-            r /= nsamples as f64;
-            g /= nsamples as f64;
-            b /= nsamples as f64;
-            *pixel = Vec3::new(r,g,b).into()
-        });
-    let mut img : RgbImage = ImageBuffer::new(width, height);
-    for n in 0..(width*height) {
-        let y = (n as u32) / width;
-        let x = (n as u32) - (y * width);
-        img.put_pixel(x, y, buf[n as usize]);
-    };
-
-    img
+pub fn get_footprint(scene: &Scene, eye: &Eye, screen: &Screen, nsamples: u64) -> Footprint {
+    let mut ne : f64::INFINITY;
+    let mut nw : f64::INFINITY;
+    let mut se : f64::INFINITY;
+    let mut sw : f64::INFINITY;
 }
+*/

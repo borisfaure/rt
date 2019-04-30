@@ -19,6 +19,8 @@ mod raytracer;
 use std::path;
 use raytracer::{
     Eye,
+    RayCtx,
+    Screen,
 };
 use scene::{
     Scene
@@ -39,8 +41,8 @@ fn main() {
     pretty_env_logger::init();
     let path = path::Path::new("/tmp/test_raytracer.png");
 
-    let eye = Eye { origin: Vec3::new(0., 1., -3.),
-                    direction: Vec3::new_normalized(0., -0.1, 1.)
+    let eye = Eye { origin: Vec3::new(0., 5., -10.),
+                    direction: Vec3::new_normalized(0., -0.5, 1.)
     };
 
     let mut scene = Scene::new();
@@ -127,10 +129,12 @@ fn main() {
     /* blue hour */
     //scene.set_blue_sun();
 
-    let img : RgbImage = raytracer::render_scene(&scene,
-                                                 &eye,
-                                                 128_u64,
-                                                 512, 256);
+    let nb_samples = 128_u64;
+    let screen = Screen { width: 512, height: 256 };
+    //let footprint = raytrace::get_footprint(&scene, &eye, &screen)
+    let ray_ctx = RayCtx::new(&eye, &screen);
+
+    let img : RgbImage = ray_ctx.render_scene(&scene, nb_samples);
 
     img.save(path).unwrap();
 }
