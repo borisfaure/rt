@@ -2,6 +2,7 @@ use rand::Rng;
 use image::{
     Rgb,
 };
+use std::f64;
 use std::mem;
 
 pub const EPSILON: f64 = 0.000001;
@@ -24,6 +25,9 @@ impl Vec3 {
 
     pub fn origin() -> Vec3 {
         Vec3 { x: 0., y: 0., z: 0., }
+    }
+    pub fn infinity() -> Vec3 {
+        Vec3 { x: f64::INFINITY, y: f64::INFINITY, z: f64::INFINITY, }
     }
 
     pub fn random_in_unit_sphere() -> Vec3 {
@@ -105,6 +109,13 @@ impl Vec3 {
             z: dest.z - self.z,
         }
     }
+    pub fn avg(&self, with: &Vec3) -> Vec3 {
+        Vec3 {
+            x: (with.x + self.x) / 2_f64,
+            y: (with.y + self.y) / 2_f64,
+            z: (with.z + self.z) / 2_f64,
+        }
+    }
     pub fn at(&self, from: &Vec3, t: f64) -> Vec3 {
         Vec3 {
             x: from.x + t * self.x,
@@ -142,10 +153,17 @@ impl Vec3 {
         self.z *= -1.;
     }
 
-    pub fn mix(&mut self, v: &Vec3, c: f64) {
+    pub fn mixed(&mut self, v: &Vec3, c: f64) {
         self.x = self.x * (1. - c) + v.x * c;
         self.y = self.y * (1. - c) + v.y * c;
         self.z = self.z * (1. - c) + v.z * c;
+    }
+    pub fn mix(&self, v: &Vec3, c: f64) -> Vec3 {
+        Vec3 {
+            x: self.x * (1. - c) + v.x * c,
+            y: self.y * (1. - c) + v.y * c,
+            z: self.z * (1. - c) + v.z * c,
+        }
     }
 }
 

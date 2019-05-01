@@ -11,6 +11,10 @@ use crate::maths::{
     EPSILON,
     Vec3,
 };
+use crate::object::{
+    Plan,
+    Object,
+};
 use rand::Rng;
 use std::f64;
 use rayon::prelude::*;
@@ -51,6 +55,28 @@ pub struct Ray {
     pub origin: Vec3,
     pub direction: Vec3,
 }
+#[derive(Debug,Clone)]
+pub struct Footprint {
+    pub ne: Vec3,
+    pub nw: Vec3,
+    pub se: Vec3,
+    pub sw: Vec3,
+}
+impl Footprint {
+    pub fn get_real_position(&self, i: f64, j: f64) -> Vec3 {
+        let e = self.se.mix(&self.ne, j);
+        let w = self.sw.mix(&self.nw, j);
+        w.mix(&e, i)
+    }
+    pub fn get_surface(&self) -> f64 {
+        let south = self.sw.length_sq_to(&self.se).sqrt();
+        let north = self.sw.length_sq_to(&self.se).sqrt();
+        let avg_south = self.sw.avg(&self.se);
+        let avg_north = self.nw.avg(&self.ne);
+        let h = avg_south.length_sq_to(&avg_north).sqrt();
+        h * (south + (north - south) / 2_f64)
+    }
+}
 
 pub struct RayCtx {
     eye: Eye,
@@ -62,6 +88,7 @@ pub struct RayCtx {
     p_top_left: Vec3,
     p_top_right: Vec3,
     p_bottom_left: Vec3,
+    p_bottom_right: Vec3,
     width: f64,
     height: f64,
     hx: Vec3,
@@ -98,8 +125,12 @@ impl RayCtx {
             c.x - b.x - v.x / aspect_ratio,
             c.y - b.y - v.y / aspect_ratio,
             c.z - b.z - v.z / aspect_ratio);
-        debug!("top_left:{:?} top_right:{:?} bottom_left:{:?}",
-               p_top_left, p_top_right, p_bottom_left);
+        let p_bottom_right = Vec3::new(
+            c.x + b.x - v.x / aspect_ratio,
+            c.y + b.y - v.y / aspect_ratio,
+            c.z + b.z - v.z / aspect_ratio);
+        debug!("top_left:{:?} top_right:{:?} bottom_left:{:?} bottom_right:{:?}",
+               p_top_left, p_top_right, p_bottom_left, p_bottom_right);
         let hx = p_top_left.to(&p_top_right);
         let hy = p_bottom_left.to(&p_top_left);
 
@@ -114,6 +145,7 @@ impl RayCtx {
             c: c,
             p_top_left: p_top_left,
             p_top_right: p_top_right,
+            p_bottom_right: p_bottom_right,
             p_bottom_left: p_bottom_left,
             width: width,
             height: height,
@@ -121,6 +153,30 @@ impl RayCtx {
             hy: hy,
         }
     }
+
+    pub fn get_footprint(&self) -> Footprint {
+        let floor = Plan::new(
+            Vec3::origin(),
+            Vec3::new(0.0, 1.0, 0.0),
+            Rgb([0, 0, 0])
+            );
+        let ft = |i, j| {
+            let r = Ray::new(&self, i, j);
+            let h = floor.hits(&r, 0_f64, f64::INFINITY);
+            if let Some(hit) = h {
+                hit.p
+            } else {
+                Vec3::infinity()
+            }
+        };
+        Footprint {
+            ne: ft(1., 1.),
+            nw: ft(0., 1.),
+            se: ft(1., 0.),
+            sw: ft(0., 0.),
+        }
+    }
+
     pub fn render_scene(&self, scene: &Scene, nsamples: u64) -> RgbImage {
         let black : Rgb<u8> = Rgb([0, 0, 0]);
         let mut buf: Vec<Rgb<u8>> = vec![black; (self.screen.width * self.screen.height) as usize];
@@ -272,7 +328,7 @@ fn color(ray: &Ray, scene: &Scene, depth: u8) -> Vec3 {
                 };
                 let sun_hit = hits(&sun_ray, scene);
                 if sun_hit.t == f64::INFINITY {
-                    c.mix(sun_color, 1. - *softness);
+                    c.mixed(sun_color, 1. - *softness);
                 } else {
                     c.mult(*softness);
                 }
@@ -281,18 +337,3 @@ fn color(ray: &Ray, scene: &Scene, depth: u8) -> Vec3 {
         c
     }
 }
-
-/*
-pub struct Footprint {
-    ne: f64,
-    nw: f64,
-    se: f64,
-    sw: f64,
-}
-pub fn get_footprint(scene: &Scene, eye: &Eye, screen: &Screen, nsamples: u64) -> Footprint {
-    let mut ne : f64::INFINITY;
-    let mut nw : f64::INFINITY;
-    let mut se : f64::INFINITY;
-    let mut sw : f64::INFINITY;
-}
-*/
