@@ -3,6 +3,7 @@ extern crate image;
 extern crate log;
 extern crate pretty_env_logger;
 extern crate color_scaling;
+extern crate chrono;
 extern crate rand;
 extern crate rayon;
 

@@ -18,6 +18,12 @@ use crate::object::{
 use rand::Rng;
 use std::f64;
 use rayon::prelude::*;
+use chrono::{Local, DateTime};
+use chrono::prelude::*;
+use time::Duration;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
+
 
 pub static DEPTH_MAX : u8 = 8;
 
@@ -175,6 +181,10 @@ impl RayCtx {
     pub fn render_scene(&self, scene: &Scene, nsamples: u64) -> RgbImage {
         let black : Rgb<u8> = Rgb([0, 0, 0]);
         let mut buf: Vec<Rgb<u8>> = vec![black; (self.screen.width * self.screen.height) as usize];
+        let max_rays = (self.screen.width as u64)
+            * (self.screen.height as u64) * nsamples;
+        let nb_rays = Arc::new(AtomicUsize::new(1));
+        let start: DateTime<Local> = Local::now();
 
         debug!("rendering scene");
         buf.par_iter_mut().enumerate().for_each(
@@ -209,7 +219,19 @@ impl RayCtx {
                 r /= nsamples as f64;
                 g /= nsamples as f64;
                 b /= nsamples as f64;
-                *pixel = Vec3::new(r,g,b).into()
+                *pixel = Vec3::new(r,g,b).into();
+                let nb_rays = nb_rays.fetch_add(nsamples as usize, Ordering::SeqCst);
+                let now: DateTime<Local> = Local::now();
+                let duration = now.signed_duration_since(start);
+                let d_ms = duration.num_milliseconds();
+                let end_ms = d_ms * (max_rays as i64) / (nb_rays as i64);
+                let end_d = chrono::Duration::milliseconds(end_ms);
+                let end = start.checked_add_signed(end_d).unwrap();
+
+                print!("\r> {:>12} / {:} ({:3}%) end at {:?}",
+                       nb_rays, max_rays,
+                       100_u64 * (nb_rays as u64) / (max_rays as u64),
+                       end.to_rfc2822());
             });
         let mut img : RgbImage = ImageBuffer::new(self.screen.width,
                                                   self.screen.height);
