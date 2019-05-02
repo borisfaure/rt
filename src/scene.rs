@@ -91,7 +91,7 @@ impl Scene {
             let i = rng.gen::<f64>();
             let j = rng.gen::<f64>();
             let pos = footprint.get_real_position(i, j);
-            let rnd_factor = 0.8_f64 + 0.4_f64 * rng.gen::<f64>();
+            let rnd_factor = 0.7_f64 + 0.6_f64 * rng.gen::<f64>();
             let this_r = r * rnd_factor;
             let this_width = width * rnd_factor;
             let c = Circle::new(pos.clone(), r);

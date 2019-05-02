@@ -154,12 +154,7 @@ impl RayCtx {
         }
     }
 
-    pub fn get_footprint(&self) -> Footprint {
-        let floor = Plan::new(
-            Vec3::origin(),
-            Vec3::new(0.0, 1.0, 0.0),
-            Rgb([0, 0, 0])
-            );
+    pub fn get_footprint(&self, floor: &Object) -> Footprint {
         let ft = |i, j| {
             let r = Ray::new(&self, i, j);
             let h = floor.hits(&r, 0_f64, f64::INFINITY);
@@ -170,10 +165,10 @@ impl RayCtx {
             }
         };
         Footprint {
-            ne: ft(1., 1.),
-            nw: ft(0., 1.),
-            se: ft(1., 0.),
-            sw: ft(0., 0.),
+            ne: ft(1.1, 1.1),
+            nw: ft(-0.1, 1.1),
+            se: ft(1.1, -0.1),
+            sw: ft(-0.1, -0.1),
         }
     }
 
