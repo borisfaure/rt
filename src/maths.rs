@@ -36,11 +36,11 @@ impl Vec3 {
             2_f64 * rng.gen::<f64>() - 1_f64,
             2_f64 * rng.gen::<f64>() - 1_f64,
             2_f64 * rng.gen::<f64>() - 1_f64);
-        v.to_normalized()
+        v.normalize()
     }
     pub fn new_normalized(x: f64, y: f64, z: f64) -> Vec3 {
         let mut v : Vec3 = Vec3::new(x, y ,z);
-        v.normalize();
+        v.normalized();
         v
     }
     pub fn new_clean(&self) -> Vec3 {
@@ -58,13 +58,13 @@ impl Vec3 {
         }
     }
 
-    pub fn normalize(&mut self) {
+    pub fn normalized(&mut self) {
         let d = self.length_sq().sqrt();
         self.x = self.x / d;
         self.y = self.y / d;
         self.z = self.z / d;
     }
-    pub fn to_normalized(&self) -> Vec3 {
+    pub fn normalize(&self) -> Vec3 {
         let d = self.length_sq().sqrt();
         Vec3 {
             x: self.x / d,
@@ -130,11 +130,25 @@ impl Vec3 {
             z: self.z + b.z,
         }
     }
+    pub fn subv(&self, b: &Vec3) -> Vec3 {
+        Vec3 {
+            x: self.x - b.x,
+            y: self.y - b.y,
+            z: self.z - b.z,
+        }
+    }
     pub fn multv(&self, b: &Vec3) -> Vec3 {
         Vec3 {
             x: self.x * b.x,
             y: self.y * b.y,
             z: self.z * b.z,
+        }
+    }
+    pub fn divv(&self, b: &Vec3) -> Vec3 {
+        Vec3 {
+            x: self.x / b.x,
+            y: self.y / b.y,
+            z: self.z / b.z,
         }
     }
     pub fn mult(&mut self, d: f64) {
@@ -147,10 +161,29 @@ impl Vec3 {
         self.y /= d;
         self.z /= d;
     }
-    pub fn invert(&mut self) {
+    pub fn opposite(&self) -> Vec3 {
+        Vec3 {
+            x: self.x * -1.,
+            y: self.y * -1.,
+            z: self.z * -1.,
+        }
+    }
+    pub fn opposited(&mut self) {
         self.x *= -1.;
         self.y *= -1.;
         self.z *= -1.;
+    }
+    pub fn invert(&self) -> Vec3 {
+        Vec3 {
+            x: 1. / self.x,
+            y: 1. / self.y,
+            z: 1. / self.z,
+        }
+    }
+    pub fn inverted(&mut self) {
+        self.x = 1. / self.x;
+        self.y = 1. / self.y;
+        self.z = 1. / self.z;
     }
 
     pub fn mixed(&mut self, v: &Vec3, c: f64) {

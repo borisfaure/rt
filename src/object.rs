@@ -60,6 +60,7 @@ impl Object for Plan {
 
 /* }}} */
 /* {{{ Sphere */
+#[derive(Clone)]
 pub struct Sphere {
     center: Vec3,
     radius: f64,
@@ -115,6 +116,54 @@ impl Object for Sphere {
             return Some(h);
         }
         None
+    }
+}
+
+/* }}} */
+/* {{{ Ellipsoid */
+pub struct Ellipsoid {
+    center: Vec3,
+    translation: Vec3,
+    radii: Vec3,
+    inv_radii: Vec3,
+    sphere: Sphere,
+}
+impl Ellipsoid {
+    pub fn new(center: Vec3, radii: Vec3, color: Rgb<u8>) -> Ellipsoid{
+        let center = center;
+        let translation = center.opposite();
+        let inv_radii = radii.invert();
+        let s = Sphere::new(Vec3::origin(), 1., color);
+        Ellipsoid {
+            center: center,
+            translation: translation,
+            radii: radii,
+            inv_radii: inv_radii,
+            sphere: s,
+        }
+    }
+}
+
+impl Object for Ellipsoid {
+    fn hits(&self, ray: &Ray, tmin: f64, tmax: f64) -> Option<Hit> {
+        let ray2 = Ray {
+            origin: ray.origin.addv(&self.translation).multv(&self.inv_radii),
+            direction: ray.direction.multv(&self.inv_radii),
+        };
+        let h = self.sphere.hits(&ray2, tmin, tmax);
+        if let Some(hit) = h {
+            let n = hit.normal;
+            let p = hit.p.multv(&self.radii).addv(&self.center);
+            let h = Hit {
+                color: hit.color,
+                normal: n,
+                p: p,
+                t: hit.t,
+            };
+            Some(h)
+        } else {
+            None
+        }
     }
 }
 

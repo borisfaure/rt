@@ -27,6 +27,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 pub static DEPTH_MAX : u8 = 8;
 
+#[derive(Debug)]
 pub struct Hit {
     pub color: Vec3,
     pub normal : Vec3,
@@ -320,7 +321,7 @@ fn color(ray: &Ray, scene: &Scene, depth: u8) -> Vec3 {
             c1 = Rgb([20, 24, 42]);
             c2 = Rgb([43, 47, 82]);
         }
-        let ud = ray.direction.to_normalized();
+        let ud = ray.direction.normalize();
         //assert!(ud.y >= 0_f64);
         //assert!(ud.y <= 1_f64);
         scale_rgb(&c2, &c1, f64::abs(ud.y)).unwrap().into()

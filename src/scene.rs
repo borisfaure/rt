@@ -64,7 +64,7 @@ impl Scene {
     pub fn set_golden_sun(&mut self) {
         self.set_sun(
             Some(
-                (Vec3::new(3., 1., -1.),
+                (Vec3::new(3., 1., -3.),
                  Rgb([242, 144, 45]).into(),
                 0.6)));
     }
