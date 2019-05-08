@@ -31,8 +31,9 @@ use maths::{
 };
 use object::{
     Ellipsoid,
-    Sphere,
+    Owl,
     Plan,
+    Sphere,
 };
 
 fn main() {
@@ -78,20 +79,12 @@ fn main() {
         scene.add(sphere);
     }
 
-    if true {
-        let ellipsoid = Ellipsoid::new(
-            Vec3::new(4., 16., 13.),
-            Vec3::new(2., 1., 1.),
-            Rgb([34, 139, 34])
+    {
+        let owl = Owl::new(
+            Vec3::new(0., 12., 10.),
+            6.,
             );
-        scene.add(ellipsoid);
-    } else {
-        let sphere = Sphere::new(
-            Vec3::new(4., 16., 13.),
-            2.,
-            Rgb([34, 139, 34])
-            );
-        scene.add(sphere);
+        scene.add(owl);
     }
 
     {
@@ -124,7 +117,8 @@ fn main() {
     let floor = Plan::new(
         Vec3::origin(),
         Vec3::new(0.0, 1.0, -1.0),
-        Rgb([237, 201, 175])
+        Rgb([34, 139, 34])
+        //Rgb([237, 201, 175])
         );
     let footprint = ray_ctx.get_footprint(&floor);
     info!("footprint:{:?}", footprint);

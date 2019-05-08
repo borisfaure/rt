@@ -336,3 +336,110 @@ impl Object for Conifer {
         hit_min
     }
 }
+/* }}} */
+/* Owl {{{ */
+pub struct Owl {
+    pub objects: Vec<Box<Object + Sync + Send>>,
+}
+impl Owl {
+    pub fn new(base: Vec3, height: f64) -> Owl {
+        let mut objs: Vec<Box<Object + Sync + Send>> = Vec::new();
+        let brown = Rgb([98, 57, 17]);
+        let orange = Rgb([242, 123, 8]);
+        let black = Rgb([2, 2, 2]);
+        let body_height = height * 0.7;
+        let head_radius = body_height / 4.;
+        let body = Ellipsoid::new(
+            base.clone(),
+            Vec3::new(head_radius * 1.2,
+                      body_height / 2.,
+                      head_radius * 1.2),
+            brown.clone(),
+            );
+        let head = Sphere::new(
+            Vec3::new(base.x,
+                      base.y + height * 0.4 + head_radius / 2.,
+                      base.z),
+            head_radius,
+            brown.clone(),
+            );
+        let eye_y = base.y + height * 0.4 + head_radius * 1.2;
+        let right_eye = Sphere::new(
+            Vec3::new(
+                base.x + head_radius * 0.4,
+                eye_y,
+                base.z - head_radius * 0.55),
+            head_radius * 0.1,
+            black.clone()
+            );
+        let left_eye = Sphere::new(
+            Vec3::new(
+                base.x - head_radius * 0.4,
+                eye_y,
+                base.z - head_radius * 0.55),
+            head_radius * 0.1,
+            black.clone()
+            );
+        let beak = Ellipsoid::new(
+            Vec3::new(
+                base.x,
+                base.y + height * 0.4 + head_radius,
+                base.z - head_radius * 0.9
+                ),
+            Vec3::new(head_radius * 0.1,
+                      head_radius * 0.2,
+                      head_radius * 0.1),
+            black.clone()
+            );
+        let ear_y = base.y + height * 0.4 + head_radius * 2.2;
+        let left_ear = Tetrahedron::new(
+            Vec3::new(
+                base.x - head_radius * 0.5,
+                ear_y,
+                base.z
+            ),
+            head_radius * 2.,
+            head_radius * 0.4,
+            0.,
+            brown.clone()
+            );
+        let right_ear = Tetrahedron::new(
+            Vec3::new(
+                base.x + head_radius * 0.5,
+                ear_y,
+                base.z
+            ),
+            head_radius * 2.,
+            head_radius * 0.4,
+            0.,
+            brown.clone()
+            );
+
+        objs.push(Box::new(body));
+        objs.push(Box::new(head));
+        objs.push(Box::new(right_eye));
+        objs.push(Box::new(left_eye));
+        objs.push(Box::new(beak));
+        objs.push(Box::new(left_ear));
+        objs.push(Box::new(right_ear));
+        Owl {
+            objects: objs,
+        }
+    }
+}
+impl Object for Owl {
+    fn hits(&self, ray: &Ray, tmin: f64, tmax: f64) -> Option<Hit> {
+        let mut t_min = f64::INFINITY;
+        let mut hit_min = None;
+        for o in &self.objects {
+            if let Some(hit) = o.hits(&ray, 0_f64, t_min) {
+                if hit.t < t_min  && hit.t >= tmin && hit.t <= tmax {
+                    t_min = hit.t;
+                    hit_min = Some(hit);
+                }
+            }
+        }
+        hit_min
+    }
+}
+/* }}} */
