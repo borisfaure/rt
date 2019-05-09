@@ -447,6 +447,7 @@ impl Object for Owl {
 /* Signature {{{ */
 pub struct Signature {
     pub objects: Vec<Box<Object + Sync + Send>>,
+    pub bounding_sphere: Sphere,
 }
 impl Signature {
     pub fn new(ray_ctx: &RayCtx) -> Signature {
@@ -480,6 +481,18 @@ impl Signature {
                 );
             objs.push(Box::new(sphere));
         };
+        let bs = Sphere::new(
+            Vec3::new(
+                base.x + 12.5 * diameter * ray_ctx.b.x
+                    + 2.5 * diameter * ray_ctx.v.x,
+                base.y + 12.5 * diameter * ray_ctx.b.y
+                    + 2.5 * diameter * ray_ctx.v.y,
+                base.z + 12.5 * diameter * ray_ctx.b.z
+                    + 2.5 * diameter * ray_ctx.v.z,
+            ),
+            16. * diameter,
+            Rgb([0, 0, 0])
+            );
         /* B */
         add_point(0., 0.);
         add_point(0., 1.);
@@ -550,6 +563,7 @@ impl Signature {
 
         Signature {
             objects: objs,
+            bounding_sphere: bs,
         }
     }
 }
@@ -557,11 +571,13 @@ impl Object for Signature {
     fn hits(&self, ray: &Ray, tmin: f64, tmax: f64) -> Option<Hit> {
         let mut t_min = f64::INFINITY;
         let mut hit_min = None;
-        for o in &self.objects {
-            if let Some(hit) = o.hits(&ray, 0_f64, t_min) {
-                if hit.t < t_min  && hit.t >= tmin && hit.t <= tmax {
-                    t_min = hit.t;
-                    hit_min = Some(hit);
+        if let Some(_) = self.bounding_sphere.hits(&ray, 0_f64, t_min) {
+            for o in &self.objects {
+                if let Some(hit) = o.hits(&ray, 0_f64, t_min) {
+                    if hit.t < t_min  && hit.t >= tmin && hit.t <= tmax {
+                        t_min = hit.t;
+                        hit_min = Some(hit);
+                    }
                 }
             }
         }
