@@ -86,26 +86,27 @@ impl Footprint {
 }
 
 pub struct RayCtx {
-    eye: Eye,
-    screen: Screen,
-    w: Vec3,
-    b: Vec3,
-    v: Vec3,
-    c: Vec3,
-    p_top_left: Vec3,
-    p_top_right: Vec3,
-    p_bottom_left: Vec3,
-    p_bottom_right: Vec3,
-    width: f64,
-    height: f64,
-    hx: Vec3,
-    hy: Vec3,
+    pub aspect_ratio: f64,
+    pub eye: Eye,
+    pub screen: Screen,
+    pub w: Vec3,
+    pub b: Vec3,
+    pub v: Vec3,
+    pub c: Vec3,
+    pub p_top_left: Vec3,
+    pub p_top_right: Vec3,
+    pub p_bottom_left: Vec3,
+    pub p_bottom_right: Vec3,
+    pub width: f64,
+    pub height: f64,
+    pub hx: Vec3,
+    pub hy: Vec3,
 }
 impl RayCtx {
     pub fn new(eye: &Eye, screen: &Screen) -> RayCtx {
-        let w = Vec3::new(0., 1., 0.);
-        let b = w.cross_product(&eye.direction); // →
-        let v = eye.direction.cross_product(&b); // ↑
+        let w = Vec3::new_normalized(0., 1., 0.);
+        let b = w.cross_product(&eye.direction).normalize(); // →
+        let v = eye.direction.cross_product(&b).normalize(); // ↑
         debug!("b:{:?} v:{:?}", b, v);
         let d = 1.;
         let c = eye.origin.translate(&eye.direction, d);
@@ -144,6 +145,7 @@ impl RayCtx {
         debug!("hx:{:?}, hy:{:?}", hx ,hy);
 
         RayCtx {
+            aspect_ratio: aspect_ratio,
             eye: (*eye).clone(),
             screen: (*screen).clone(),
             w: w,
@@ -248,7 +250,6 @@ impl RayCtx {
     fn cast_ray_from_eye(&self, scene: &Scene, i: f64, j: f64) -> Vec3 {
         let r = Ray::new(&self, i, j);
         debug!("({:?},{:?}) r:{:?}", i, j, r);
-        assert!(r.direction.z >= 0.);
         color(&r, scene, 0)
     }
 

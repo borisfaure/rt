@@ -66,7 +66,7 @@ impl Scene {
             Some(
                 (Vec3::new(3., 1., -3.),
                  Rgb([242, 144, 45]).into(),
-                0.6)));
+                0.8)));
     }
     pub fn set_blue_sun(&mut self) {
         self.set_sun(

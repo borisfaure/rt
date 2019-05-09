@@ -33,6 +33,7 @@ use object::{
     Ellipsoid,
     Owl,
     Plan,
+    Signature,
     Sphere,
 };
 
@@ -79,7 +80,7 @@ fn main() {
         scene.add(sphere);
     }
 
-    {
+    if false {
         let owl = Owl::new(
             Vec3::new(0., 12., 10.),
             6.,
@@ -125,6 +126,9 @@ fn main() {
     scene.add(floor);
     //let trees = scene.generate_forest_monte_carlo(&footprint, 0.30);
     //info!("trees:{:?}", trees);
+    let signature = Signature::new(&ray_ctx);
+    scene.add(signature);
+
 
     let img : RgbImage = ray_ctx.render_scene(&scene, nb_samples);
 
