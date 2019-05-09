@@ -341,6 +341,7 @@ impl Object for Conifer {
 /* Owl {{{ */
 pub struct Owl {
     pub objects: Vec<Box<Object + Sync + Send>>,
+    pub bounding_sphere: Sphere,
 }
 impl Owl {
     pub fn new(base: Vec3, height: f64) -> Owl {
@@ -415,6 +416,15 @@ impl Owl {
             0.,
             brown.clone()
             );
+        let bs = Sphere::new(
+            Vec3::new(
+                base.x,
+                base.y + height / 2.,
+                base.z,
+            ),
+            height * 0.7,
+            Rgb([0, 0, 0])
+            );
 
         objs.push(Box::new(body));
         objs.push(Box::new(head));
@@ -425,6 +435,7 @@ impl Owl {
         objs.push(Box::new(right_ear));
         Owl {
             objects: objs,
+            bounding_sphere: bs,
         }
     }
 }
@@ -432,11 +443,13 @@ impl Object for Owl {
     fn hits(&self, ray: &Ray, tmin: f64, tmax: f64) -> Option<Hit> {
         let mut t_min = f64::INFINITY;
         let mut hit_min = None;
-        for o in &self.objects {
-            if let Some(hit) = o.hits(&ray, 0_f64, t_min) {
-                if hit.t < t_min  && hit.t >= tmin && hit.t <= tmax {
-                    t_min = hit.t;
-                    hit_min = Some(hit);
+        if let Some(_) = self.bounding_sphere.hits(&ray, 0_f64, t_min) {
+            for o in &self.objects {
+                if let Some(hit) = o.hits(&ray, 0_f64, t_min) {
+                    if hit.t < t_min  && hit.t >= tmin && hit.t <= tmax {
+                        t_min = hit.t;
+                        hit_min = Some(hit);
+                    }
                 }
             }
         }
