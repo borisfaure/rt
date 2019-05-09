@@ -285,6 +285,7 @@ impl Object for Tetrahedron {
 /* Conifer {{{ */
 pub struct Conifer {
     tetrahedrons: Vec<Tetrahedron>,
+    bounding_sphere: Sphere,
     color: Vec3,
 }
 const CONIFER_RATIO : f64 = 1.8;
@@ -301,23 +302,35 @@ impl Conifer {
             z: center.z
         };
         let color = Rgb([34, 139, 34]);
-        for _ in 0..steps {
+        for i in 0..steps {
             let th = Tetrahedron::new(
                 top.clone(),
                 height, width, angle,
                 color.clone()
                 );
             // next loop
-            top.y -= height * 0.6;
-            angle += PI;
-            width *= 0.8;
-            height *= 0.8;
-            top.y += height;
+            if i != steps -1 {
+                top.y -= height * 0.6;
+                angle += PI;
+                width *= 0.8;
+                height *= 0.8;
+                top.y += height;
+            }
 
             tetrahedrons.push(th);
         }
+        let bs = Sphere::new(
+            Vec3::new(
+                center.x,
+                (top.y + center.y) / 2.,
+                center.z,
+            ),
+            base_width * 3.,
+            Rgb([0, 0, 0])
+            );
         Conifer {
             tetrahedrons: tetrahedrons,
+            bounding_sphere: bs,
             color: color.into(),
         }
     }
@@ -326,11 +339,13 @@ impl Object for Conifer {
     fn hits(&self, ray: &Ray, tmin: f64, tmax: f64) -> Option<Hit> {
         let mut t_min = f64::INFINITY;
         let mut hit_min = None;
-        for o in &self.tetrahedrons {
-            if let Some(hit) = o.hits(&ray, 0_f64, t_min) {
-                if hit.t < t_min  && hit.t >= tmin && hit.t <= tmax {
-                    t_min = hit.t;
-                    hit_min = Some(hit);
+        if let Some(_) = self.bounding_sphere.hits(&ray, 0_f64, t_min) {
+            for o in &self.tetrahedrons {
+                if let Some(hit) = o.hits(&ray, 0_f64, t_min) {
+                    if hit.t < t_min  && hit.t >= tmin && hit.t <= tmax {
+                        t_min = hit.t;
+                        hit_min = Some(hit);
+                    }
                 }
             }
         }
