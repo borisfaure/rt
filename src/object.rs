@@ -1,3 +1,4 @@
+use color_scaling::scale_rgb;
 use image::{
     Rgb,
 };
@@ -303,7 +304,9 @@ impl Conifer {
             y: base.y + height,
             z: base.z
         };
-        let color = Rgb([34, 139, 34]);
+        let g1 = Rgb([0, 151, 0]);
+        let g2 = Rgb([61, 159, 73]);
+        let color = scale_rgb(&g1, &g2, rng.gen::<f64>()).unwrap();
         for i in 0..steps {
             let th = Tetrahedron::new(
                 top.clone(),
