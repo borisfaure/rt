@@ -36,14 +36,38 @@ use object::{
     Signature,
     Sphere,
 };
+struct Preset {
+    eye: Eye,
+    nb_samples: u64,
+    screen: Screen,
+    density: f64,
+}
 
 fn main() {
     pretty_env_logger::init();
     let path = path::Path::new("/tmp/test_raytracer.png");
 
-    let eye = Eye { origin: Vec3::new(0., 25., 0.),
-                    direction: Vec3::new_normalized(0., -1.0, 1.)
-    };
+    let small = false;
+    let preset;
+    if small {
+        preset = Preset {
+            eye: Eye { origin: Vec3::new(0., 25., 0.),
+            direction: Vec3::new_normalized(0., -1.0, 1.)
+            },
+            nb_samples: 8_u64,
+            screen: Screen { width: 512, height: 256 },
+            density: 0.1,
+        }
+    } else {
+        preset = Preset {
+            eye: Eye { origin: Vec3::new(0., 25., 0.),
+            direction: Vec3::new_normalized(0., -1.0, 1.)
+            },
+            nb_samples: 128_u64,
+            screen: Screen { width: 4096, height: 2160},
+            density: 0.4,
+        }
+    }
 
     let mut scene = Scene::new();
 
@@ -51,10 +75,7 @@ fn main() {
     scene.set_golden_sun();
 
 
-    let nb_samples = 1_u64;
-    let screen = Screen { width: 512, height: 256 };
-
-    let ray_ctx = RayCtx::new(&eye, &screen);
+    let ray_ctx = RayCtx::new(&preset.eye, &preset.screen);
 
     let floor = Plan::new(
         Vec3::origin(),
@@ -64,13 +85,14 @@ fn main() {
     let footprint = ray_ctx.get_footprint(&floor);
     info!("footprint:{:?}", footprint);
     scene.add(floor);
-    let trees = scene.generate_forest_monte_carlo(&footprint, 0.10, true);
+    let trees = scene.generate_forest_monte_carlo(&footprint,
+                                                  preset.density, false);
     info!("trees:{:?}", trees);
     let signature = Signature::new(&ray_ctx);
     scene.add(signature);
 
 
-    let img : RgbImage = ray_ctx.render_scene(&scene, nb_samples);
+    let img : RgbImage = ray_ctx.render_scene(&scene, preset.nb_samples);
 
     img.save(path).unwrap();
 }
