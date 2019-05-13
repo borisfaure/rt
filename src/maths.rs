@@ -1,13 +1,11 @@
+use image::Rgb;
 use rand::Rng;
-use image::{
-    Rgb,
-};
 use std::f64;
 use std::mem;
 
 pub const EPSILON: f64 = 0.000001;
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct Vec3 {
     pub x: f64,
     pub y: f64,
@@ -16,18 +14,22 @@ pub struct Vec3 {
 
 impl Vec3 {
     pub fn new(x: f64, y: f64, z: f64) -> Vec3 {
-        Vec3 {
-            x: x,
-            y: y,
-            z: z,
-        }
+        Vec3 { x: x, y: y, z: z }
     }
 
     pub fn origin() -> Vec3 {
-        Vec3 { x: 0., y: 0., z: 0., }
+        Vec3 {
+            x: 0.,
+            y: 0.,
+            z: 0.,
+        }
     }
     pub fn infinity() -> Vec3 {
-        Vec3 { x: f64::INFINITY, y: f64::INFINITY, z: f64::INFINITY, }
+        Vec3 {
+            x: f64::INFINITY,
+            y: f64::INFINITY,
+            z: f64::INFINITY,
+        }
     }
 
     pub fn random_in_unit_sphere() -> Vec3 {
@@ -35,17 +37,18 @@ impl Vec3 {
         let v = Vec3::new(
             2_f64 * rng.gen::<f64>() - 1_f64,
             2_f64 * rng.gen::<f64>() - 1_f64,
-            2_f64 * rng.gen::<f64>() - 1_f64);
+            2_f64 * rng.gen::<f64>() - 1_f64,
+        );
         v.normalize()
     }
     pub fn new_normalized(x: f64, y: f64, z: f64) -> Vec3 {
-        let mut v : Vec3 = Vec3::new(x, y ,z);
+        let mut v: Vec3 = Vec3::new(x, y, z);
         v.normalized();
         v
     }
     pub fn new_clean(&self) -> Vec3 {
         let cleanup = |v| {
-            if -EPSILON  <= v && v <= EPSILON {
+            if -EPSILON <= v && v <= EPSILON {
                 0_f64
             } else {
                 v
@@ -76,7 +79,8 @@ impl Vec3 {
         Vec3::new(
             self.y * v.z - self.z * v.y,
             self.z * v.x - self.x * v.z,
-            self.x * v.y - self.y * v.x)
+            self.x * v.y - self.y * v.x,
+        )
     }
 
     pub fn dot_product(&self, v: &Vec3) -> f64 {
@@ -92,15 +96,13 @@ impl Vec3 {
     }
 
     pub fn length_sq(&self) -> f64 {
-        self.x * self.x +
-        self.y * self.y +
-        self.z * self.z
+        self.x * self.x + self.y * self.y + self.z * self.z
     }
 
     pub fn length_sq_to(&self, p: &Vec3) -> f64 {
-        (self.x - p.x) * (self.x - p.x) +
-        (self.y - p.y) * (self.y - p.y) +
-        (self.z - p.z) * (self.z - p.z)
+        (self.x - p.x) * (self.x - p.x)
+            + (self.y - p.y) * (self.y - p.y)
+            + (self.z - p.z) * (self.z - p.z)
     }
     pub fn to(&self, dest: &Vec3) -> Vec3 {
         Vec3 {
@@ -241,9 +243,7 @@ impl Into<Vec3> for &Rgb<u8> {
     }
 }
 
-
-
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 struct Row4 {
     a: f64,
     b: f64,
@@ -252,11 +252,30 @@ struct Row4 {
 }
 
 pub fn solve_3variable_system(a: &Vec3, b: &Vec3, c: &Vec3, p: &Vec3) -> Option<Vec3> {
-    let mut r1 = Row4{a: a.x, b: b.x, c: c.x, d: p.x};
-    let mut r2 = Row4{a: a.y, b: b.y, c: c.y, d: p.y};
-    let mut r3 = Row4{a: a.z, b: b.z, c: c.z, d: p.z};
+    let mut r1 = Row4 {
+        a: a.x,
+        b: b.x,
+        c: c.x,
+        d: p.x,
+    };
+    let mut r2 = Row4 {
+        a: a.y,
+        b: b.y,
+        c: c.y,
+        d: p.y,
+    };
+    let mut r3 = Row4 {
+        a: a.z,
+        b: b.z,
+        c: c.z,
+        d: p.z,
+    };
 
-    let mut shuffle = Vec3{x: 1., y: 2., z: 3.};
+    let mut shuffle = Vec3 {
+        x: 1.,
+        y: 2.,
+        z: 3.,
+    };
     if r1.a == 0. {
         if r2.a != 0. {
             /* Swap Row1 and Row2 */
@@ -317,7 +336,7 @@ pub fn solve_3variable_system(a: &Vec3, b: &Vec3, c: &Vec3, p: &Vec3) -> Option<
     }
 
     if r3.c == 0. || r2.b == 0. || r1.a == 0. {
-        return None
+        return None;
     }
 
     let mut r = Vec3::origin();
@@ -337,16 +356,15 @@ pub fn solve_3variable_system(a: &Vec3, b: &Vec3, c: &Vec3, p: &Vec3) -> Option<
         }
     }
     if shuffle.y != 2. {
-            mem::swap(&mut r.y, &mut r.z);
-            mem::swap(&mut shuffle.y, &mut shuffle.z);
+        mem::swap(&mut r.y, &mut r.z);
+        mem::swap(&mut shuffle.y, &mut shuffle.z);
     }
     assert!(shuffle.x == 1.);
     assert!(shuffle.y == 2.);
     assert!(shuffle.z == 3.);
 
-    return Some(r)
+    return Some(r);
 }
-
 
 #[cfg(test)]
 mod tests {

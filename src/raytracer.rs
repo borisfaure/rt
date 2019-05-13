@@ -1,38 +1,25 @@
-use color_scaling::scale_rgb;
-use image::{
-    ImageBuffer,
-    Rgb,
-    RgbImage,
-};
-use crate::scene::{
-    Scene,
-};
-use crate::maths::{
-    EPSILON,
-    Vec3,
-};
-use crate::object::{
-    Plan,
-    Object,
-};
-use rand::Rng;
-use std::f64;
-use rayon::prelude::*;
-use chrono::{Local, DateTime};
+use crate::maths::{Vec3, EPSILON};
+use crate::object::{Object, Plan};
+use crate::scene::Scene;
 use chrono::prelude::*;
-use time::Duration;
-use std::sync::Arc;
+use chrono::{DateTime, Local};
+use color_scaling::scale_rgb;
+use image::{ImageBuffer, Rgb, RgbImage};
+use rand::Rng;
+use rayon::prelude::*;
+use std::f64;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
+use time::Duration;
 
-
-pub static DEPTH_MAX : u8 = 8;
+pub static DEPTH_MAX: u8 = 8;
 
 #[derive(Debug)]
 pub struct Hit {
     pub color: Vec3,
-    pub normal : Vec3,
-    pub p : Vec3,
-    pub t : f64,
+    pub normal: Vec3,
+    pub p: Vec3,
+    pub t: f64,
 }
 
 impl Hit {
@@ -46,23 +33,23 @@ impl Hit {
     }
 }
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct Eye {
     pub origin: Vec3,
     pub direction: Vec3,
 }
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct Screen {
-    pub width : u32,
-    pub height : u32,
+    pub width: u32,
+    pub height: u32,
 }
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct Ray {
     pub origin: Vec3,
     pub direction: Vec3,
 }
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct Footprint {
     pub ne: Vec3,
     pub nw: Vec3,
@@ -124,25 +111,31 @@ impl RayCtx {
         let p_top_left = Vec3::new(
             c.x - b.x + v.x / aspect_ratio,
             c.y - b.y + v.y / aspect_ratio,
-            c.z - b.z + v.z / aspect_ratio);
+            c.z - b.z + v.z / aspect_ratio,
+        );
         let p_top_right = Vec3::new(
             c.x + b.x + v.x / aspect_ratio,
             c.y + b.y + v.y / aspect_ratio,
-            c.z + b.z + v.z / aspect_ratio);
+            c.z + b.z + v.z / aspect_ratio,
+        );
         let p_bottom_left = Vec3::new(
             c.x - b.x - v.x / aspect_ratio,
             c.y - b.y - v.y / aspect_ratio,
-            c.z - b.z - v.z / aspect_ratio);
+            c.z - b.z - v.z / aspect_ratio,
+        );
         let p_bottom_right = Vec3::new(
             c.x + b.x - v.x / aspect_ratio,
             c.y + b.y - v.y / aspect_ratio,
-            c.z + b.z - v.z / aspect_ratio);
-        debug!("top_left:{:?} top_right:{:?} bottom_left:{:?} bottom_right:{:?}",
-               p_top_left, p_top_right, p_bottom_left, p_bottom_right);
+            c.z + b.z - v.z / aspect_ratio,
+        );
+        debug!(
+            "top_left:{:?} top_right:{:?} bottom_left:{:?} bottom_right:{:?}",
+            p_top_left, p_top_right, p_bottom_left, p_bottom_right
+        );
         let hx = p_top_left.to(&p_top_right);
         let hy = p_bottom_left.to(&p_top_left);
 
-        debug!("hx:{:?}, hy:{:?}", hx ,hy);
+        debug!("hx:{:?}, hy:{:?}", hx, hy);
 
         RayCtx {
             aspect_ratio: aspect_ratio,
@@ -182,10 +175,9 @@ impl RayCtx {
     }
 
     pub fn render_scene(&self, scene: &Scene, nsamples: u64) -> RgbImage {
-        let black : Rgb<u8> = Rgb([0, 0, 0]);
+        let black: Rgb<u8> = Rgb([0, 0, 0]);
         let mut buf: Vec<Rgb<u8>> = vec![black; (self.screen.width * self.screen.height) as usize];
-        let max_rays = (self.screen.width as u64)
-            * (self.screen.height as u64) * nsamples;
+        let max_rays = (self.screen.width as u64) * (self.screen.height as u64) * nsamples;
         let nb_rays = Arc::new(AtomicUsize::new(1));
         let start: DateTime<Local> = Local::now();
 
@@ -196,9 +188,9 @@ impl RayCtx {
                 let y = (n as u32) / self.screen.width;
                 let x = (n as u32) - (y * self.screen.width);
                 let i_min = x as f64 / self.width;
-                let i_max = (x+1) as f64 / self.width;
+                let i_max = (x + 1) as f64 / self.width;
                 let j_min = y as f64 / self.height;
-                let j_max = (y+1) as f64 / self.height;
+                let j_max = (y + 1) as f64 / self.height;
 
                 let i_step = i_max - i_min;
                 let j_step = j_max - j_min;
@@ -222,7 +214,7 @@ impl RayCtx {
                 r /= nsamples as f64;
                 g /= nsamples as f64;
                 b /= nsamples as f64;
-                *pixel = Vec3::new(r,g,b).into();
+                *pixel = Vec3::new(r, g, b).into();
                 let nb_rays = nb_rays.fetch_add(nsamples as usize, Ordering::SeqCst);
                 let now: DateTime<Local> = Local::now();
                 let duration = now.signed_duration_since(start);
@@ -231,18 +223,21 @@ impl RayCtx {
                 let end_d = chrono::Duration::milliseconds(end_ms);
                 let end = start.checked_add_signed(end_d).unwrap();
 
-                print!("\r> {:>12} / {:} ({:3}%) end at {:?}",
-                       nb_rays, max_rays,
-                       100_u64 * (nb_rays as u64) / (max_rays as u64),
-                       end.to_rfc2822());
-            });
-        let mut img : RgbImage = ImageBuffer::new(self.screen.width,
-                                                  self.screen.height);
+                print!(
+                    "\r> {:>12} / {:} ({:3}%) end at {:?}",
+                    nb_rays,
+                    max_rays,
+                    100_u64 * (nb_rays as u64) / (max_rays as u64),
+                    end.to_rfc2822()
+                );
+            },
+        );
+        let mut img: RgbImage = ImageBuffer::new(self.screen.width, self.screen.height);
         for n in 0..(self.screen.width * self.screen.height) {
             let y = (n as u32) / self.screen.width;
             let x = (n as u32) - (y * self.screen.width);
             img.put_pixel(x, y, buf[n as usize]);
-        };
+        }
 
         img
     }
@@ -252,8 +247,6 @@ impl RayCtx {
         debug!("({:?},{:?}) r:{:?}", i, j, r);
         color(&r, scene, 0)
     }
-
-
 }
 
 impl Ray {
@@ -261,19 +254,17 @@ impl Ray {
     fn new(ctx: &RayCtx, i: f64, j: f64) -> Ray {
         /* Origin is the eye */
         let screen_point = Vec3::new(
-            ctx.p_bottom_left.x
-              + i * ctx.hx.x
-              + j * ctx.hy.x,
-            ctx.p_bottom_left.y
-              + i * ctx.hx.y
-              + j * ctx.hy.y,
-            ctx.p_bottom_left.z
-              + i * ctx.hx.z
-              + j * ctx.hy.z);
+            ctx.p_bottom_left.x + i * ctx.hx.x + j * ctx.hy.x,
+            ctx.p_bottom_left.y + i * ctx.hx.y + j * ctx.hy.y,
+            ctx.p_bottom_left.z + i * ctx.hx.z + j * ctx.hy.z,
+        );
 
         let mut d = ctx.eye.origin.to(&screen_point);
         d.normalize();
-        let r = Ray {origin: ctx.eye.origin.clone(), direction: d};
+        let r = Ray {
+            origin: ctx.eye.origin.clone(),
+            direction: d,
+        };
         r
     }
 
@@ -288,7 +279,7 @@ fn lambertian(hit: &Hit, scene: &Scene, depth: u8) -> Vec3 {
         origin: hit.p.clone(),
         direction: u.addv(&hit.normal),
     };
-    let c = color(&lambertian, &scene, depth+1);
+    let c = color(&lambertian, &scene, depth + 1);
     c.multv(&hit.color)
 }
 
@@ -311,12 +302,12 @@ fn color(ray: &Ray, scene: &Scene, depth: u8) -> Vec3 {
     if hit_min.t == f64::INFINITY {
         /* ray hit the sky */
         let daylight = true;
-        let c1 : Rgb<u8>;
-        let c2 : Rgb<u8>;
+        let c1: Rgb<u8>;
+        let c2: Rgb<u8>;
         if daylight {
             /* daylight */
             c1 = Rgb([255, 255, 255]);
-            c2 = Rgb([ 77, 143, 170]);
+            c2 = Rgb([77, 143, 170]);
         } else {
             /* dusk */
             c1 = Rgb([20, 24, 42]);
@@ -329,7 +320,7 @@ fn color(ray: &Ray, scene: &Scene, depth: u8) -> Vec3 {
     } else {
         let with_lambertian = true;
         let with_shadows = true;
-        let mut c : Vec3;
+        let mut c: Vec3;
         if with_lambertian {
             if depth > DEPTH_MAX {
                 return Vec3::new(0., 0., 0.);

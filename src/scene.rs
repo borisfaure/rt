@@ -1,22 +1,9 @@
-use crate::object::{
-    Conifer,
-    Object,
-    Owl,
-    Sphere,
-};
-use crate::maths::{
-    Vec3,
-};
+use crate::maths::Vec3;
+use crate::object::{Conifer, Object, Owl, Sphere};
 use crate::raytracer::Footprint;
-use image::{
-    Rgb,
-};
+use image::Rgb;
 use rand::Rng;
-use std::f64::{
-    self,
-    consts::PI,
-};
-
+use std::f64::{self, consts::PI};
 
 pub struct Scene {
     pub objects: Vec<Box<Object + Sync + Send>>,
@@ -40,10 +27,10 @@ impl Circle {
         let r1 = other.radix;
         (r0 - r1) * (r0 - r1) <= len_sq && len_sq <= (r0 + r1) * (r0 + r1)
     }
-    fn intersects_with_vect(&self, vec: &Vec<Circle>) -> bool{
+    fn intersects_with_vect(&self, vec: &Vec<Circle>) -> bool {
         for c in vec {
             if self.intersects(c) {
-                return true
+                return true;
             }
         }
         false
@@ -64,27 +51,32 @@ impl Scene {
         self.sun = sun;
     }
     pub fn set_golden_sun(&mut self) {
-        self.set_sun(
-            Some(
-                (Vec3::new(3., 1., -3.),
-                 Rgb([242, 144, 45]).into(),
-                0.8)));
+        self.set_sun(Some((
+            Vec3::new(3., 1., -3.),
+            Rgb([242, 144, 45]).into(),
+            0.8,
+        )));
     }
     pub fn set_blue_sun(&mut self) {
-        self.set_sun(
-            Some(
-                (Vec3::new(-3., 1., 0.),
-                 Rgb([21, 116, 196]).into(),
-                0.9)));
+        self.set_sun(Some((
+            Vec3::new(-3., 1., 0.),
+            Rgb([21, 116, 196]).into(),
+            0.9,
+        )));
     }
 
-    pub fn generate_forest_monte_carlo(&mut self, footprint: &Footprint, threshold: f64, add_owl: bool) -> u32 {
+    pub fn generate_forest_monte_carlo(
+        &mut self,
+        footprint: &Footprint,
+        threshold: f64,
+        add_owl: bool,
+    ) -> u32 {
         let mut rng = rand::thread_rng();
         let mut width = 1.5_f64;
         let mut r = width / 4_f64;
         let surface_max = footprint.get_surface() * threshold;
         let mut surface = 0_f64;
-        let mut vec : Vec<Circle> = Vec::new();
+        let mut vec: Vec<Circle> = Vec::new();
         let mut trees = 0_u32;
         let mut tries = 0_u32;
         let decreasing_factor = 0.8_f64;
@@ -107,21 +99,17 @@ impl Scene {
                 }
             } else {
                 tries = 0;
-                let conifer = Conifer::new(
-                    pos,
-                    this_width, 5_u8
-                    );
-                if !owl_added && i >= 0.2 && i <= 0.8
-                    && j >= 0.2 && j <= 0.7 {
+                let conifer = Conifer::new(pos, this_width, 5_u8);
+                if !owl_added && i >= 0.2 && i <= 0.8 && j >= 0.2 && j <= 0.7 {
                     let height = conifer.height * 0.25;
                     let owl = Owl::new(
                         Vec3::new(
                             conifer.top.x,
                             conifer.top.y - 0.1 * conifer.height,
                             conifer.top.z,
-                            ),
-                            height,
-                            );
+                        ),
+                        height,
+                    );
                     self.add(owl);
                     owl_added = true;
                 }
