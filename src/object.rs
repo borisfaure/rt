@@ -286,20 +286,22 @@ impl Object for Tetrahedron {
 pub struct Conifer {
     tetrahedrons: Vec<Tetrahedron>,
     bounding_sphere: Sphere,
+    pub top: Vec3,
+    pub height: f64,
     color: Vec3,
 }
 const CONIFER_RATIO : f64 = 1.8;
 impl Conifer {
-    pub fn new(center: Vec3, base_width: f64, steps: u8) -> Conifer {
+    pub fn new(base: Vec3, base_width: f64, steps: u8) -> Conifer {
         let mut rng = rand::thread_rng();
         let mut angle = rng.gen::<f64>() * 2. * PI;
         let mut tetrahedrons = Vec::new();
         let mut width = base_width;
         let mut height = base_width * CONIFER_RATIO;
         let mut top = Vec3 {
-            x: center.x,
-            y: center.y + height,
-            z: center.z
+            x: base.x,
+            y: base.y + height,
+            z: base.z
         };
         let color = Rgb([34, 139, 34]);
         for i in 0..steps {
@@ -315,22 +317,26 @@ impl Conifer {
                 width *= 0.8;
                 height *= 0.8;
                 top.y += height;
+                assert!(top.y - height >= base.y);
             }
 
             tetrahedrons.push(th);
         }
         let bs = Sphere::new(
             Vec3::new(
-                center.x,
-                (top.y + center.y) / 2.,
-                center.z,
+                base.x,
+                base.y + (top.y - base.y) / 3.,
+                base.z,
             ),
-            base_width * 3.,
+            (top.y - base.y) / 2.,
             Rgb([0, 0, 0])
             );
+        let height = top.y - base.y;
         Conifer {
             tetrahedrons: tetrahedrons,
             bounding_sphere: bs,
+            top: top,
+            height: height,
             color: color.into(),
         }
     }
