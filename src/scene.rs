@@ -1,6 +1,8 @@
 use crate::object::{
     Conifer,
     Object,
+    Owl,
+    Sphere,
 };
 use crate::maths::{
     Vec3,
@@ -76,7 +78,7 @@ impl Scene {
                 0.9)));
     }
 
-    pub fn generate_forest_monte_carlo(&mut self, footprint: &Footprint, threshold: f64) -> u32 {
+    pub fn generate_forest_monte_carlo(&mut self, footprint: &Footprint, threshold: f64, add_owl: bool) -> u32 {
         let mut rng = rand::thread_rng();
         let mut width = 1.5_f64;
         let mut r = width / 4_f64;
@@ -86,6 +88,7 @@ impl Scene {
         let mut trees = 0_u32;
         let mut tries = 0_u32;
         let decreasing_factor = 0.8_f64;
+        let mut owl_added = !add_owl;
 
         loop {
             let i = rng.gen::<f64>();
@@ -108,6 +111,20 @@ impl Scene {
                     pos,
                     this_width, 5_u8
                     );
+                if !owl_added && i >= 0.2 && i <= 0.8
+                    && j >= 0.2 && j <= 0.7 {
+                    let height = conifer.height * 0.25;
+                    let owl = Owl::new(
+                        Vec3::new(
+                            conifer.top.x,
+                            conifer.top.y - 0.1 * conifer.height,
+                            conifer.top.z,
+                            ),
+                            height,
+                            );
+                    self.add(owl);
+                    owl_added = true;
+                }
                 self.add(conifer);
                 vec.push(c);
                 trees += 1;
