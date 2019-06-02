@@ -1,9 +1,23 @@
-use crate::maths::{solve_3variable_system, Vec3, EPSILON};
-use crate::raytracer::{Hit, Ray, RayCtx};
 use color_scaling::scale_rgb;
-use image::Rgb;
+use image::{
+    Rgb,
+};
 use rand::Rng;
-use std::f64::{self, consts::PI};
+use crate::raytracer::{
+    Ray,
+    Hit,
+    RayCtx,
+};
+use crate::maths::{
+    EPSILON,
+    Vec3,
+    solve_3variable_system,
+};
+use std::f64::{
+    self,
+    consts::PI,
+};
+
 
 pub trait Object {
     fn hits(&self, r: &Ray, tmin: f64, tmax: f64) -> Option<Hit>;
@@ -61,7 +75,7 @@ impl Sphere {
             center: center,
             radius: radius,
             rd_sq: radius * radius,
-            color: color.into(),
+            color: color.into()
         }
     }
 }
@@ -72,12 +86,12 @@ impl Object for Sphere {
         let a = ray.direction.dot_product(&ray.direction);
         let b = oc.dot_product(&ray.direction);
         let c = oc.dot_product(&oc) - self.rd_sq;
-        let discrimant = b * b - a * c;
+        let discrimant = b*b - a*c;
         if discrimant <= 0_f64 {
             return None;
         }
         let discrimant_sqrt = discrimant.sqrt();
-        let t1 = (-b - discrimant_sqrt) / a;
+        let t1 = (-b - discrimant_sqrt ) / a;
         if tmin < t1 && t1 < tmax {
             let p = ray.at(t1);
             let mut n = self.center.to(&p);
@@ -90,7 +104,7 @@ impl Object for Sphere {
             };
             return Some(h);
         }
-        let t2 = (-b + discrimant_sqrt) / a;
+        let t2 = (-b + discrimant_sqrt ) / a;
         if tmin < t2 && t2 < tmax {
             let p = ray.at(t2);
             let mut n = self.center.to(&p);
@@ -117,7 +131,7 @@ pub struct Ellipsoid {
     sphere: Sphere,
 }
 impl Ellipsoid {
-    pub fn new(center: Vec3, radii: Vec3, color: Rgb<u8>) -> Ellipsoid {
+    pub fn new(center: Vec3, radii: Vec3, color: Rgb<u8>) -> Ellipsoid{
         let center = center;
         let translation = center.opposite();
         let inv_radii = radii.invert();
@@ -202,7 +216,7 @@ impl Object for Triangle {
         let p = ray.at(t);
         let o = solve_3variable_system(&self.a, &self.b, &self.c, &p);
         if let Some(w) = o {
-            if w.x < 0. || w.y < 0. || w.z < 0. {
+            if w.x < 0.|| w.y < 0. || w.z < 0. {
                 return None;
             }
             let h = Hit {
@@ -232,17 +246,17 @@ impl Tetrahedron {
         let A = Vec3::new(
             bottom_center.x + width * (angle + 2. * PI / 3.).cos(),
             bottom_center.y,
-            bottom_center.z + width * (angle + 2. * PI / 3.).sin(),
+            bottom_center.z + width * (angle + 2. * PI / 3.).sin()
         );
         let B = Vec3::new(
             bottom_center.x + width * (angle + 4. * PI / 3.).cos(),
             bottom_center.y,
-            bottom_center.z + width * (angle + 4. * PI / 3.).sin(),
+            bottom_center.z + width * (angle + 4. * PI / 3.).sin()
         );
         let C = Vec3::new(
             bottom_center.x + width * (angle).cos(),
             bottom_center.y,
-            bottom_center.z + width * (angle).sin(),
+            bottom_center.z + width * (angle).sin()
         );
         Tetrahedron {
             base: Triangle::new_ref(&A, &C, &B, &color),
@@ -259,7 +273,7 @@ impl Object for Tetrahedron {
         let mut hit_min = None;
         for o in vec![&self.base, &self.side1, &self.side2, &self.side3] {
             if let Some(hit) = o.hits(&ray, 0_f64, t_min) {
-                if hit.t < t_min && hit.t >= tmin && hit.t <= tmax {
+                if hit.t < t_min  && hit.t >= tmin && hit.t <= tmax {
                     t_min = hit.t;
                     hit_min = Some(hit);
                 }
@@ -277,7 +291,7 @@ pub struct Conifer {
     pub height: f64,
     color: Vec3,
 }
-const CONIFER_RATIO: f64 = 1.8;
+const CONIFER_RATIO : f64 = 1.8;
 impl Conifer {
     pub fn new(base: Vec3, base_width: f64, steps: u8) -> Conifer {
         let mut rng = rand::thread_rng();
@@ -288,15 +302,19 @@ impl Conifer {
         let mut top = Vec3 {
             x: base.x,
             y: base.y + height,
-            z: base.z,
+            z: base.z
         };
         let g1 = Rgb([0, 151, 0]);
         let g2 = Rgb([61, 159, 73]);
         let color = scale_rgb(&g1, &g2, rng.gen::<f64>()).unwrap();
         for i in 0..steps {
-            let th = Tetrahedron::new(top.clone(), height, width, angle, color.clone());
+            let th = Tetrahedron::new(
+                top.clone(),
+                height, width, angle,
+                color.clone()
+                );
             // next loop
-            if i != steps - 1 {
+            if i != steps -1 {
                 top.y -= height * 0.6;
                 angle += PI;
                 width *= 0.8;
@@ -308,10 +326,14 @@ impl Conifer {
             tetrahedrons.push(th);
         }
         let bs = Sphere::new(
-            Vec3::new(base.x, base.y + (top.y - base.y) / 3., base.z),
-            (top.y - base.y) / 2.,
-            Rgb([0, 0, 0]),
-        );
+            Vec3::new(
+                base.x,
+                base.y + (top.y - base.y) / 3.,
+                base.z,
+            ),
+            (top.y - base.y) * 0.8,
+            Rgb([0, 0, 0])
+            );
         let height = top.y - base.y;
         Conifer {
             tetrahedrons: tetrahedrons,
@@ -329,7 +351,7 @@ impl Object for Conifer {
         if let Some(_) = self.bounding_sphere.hits(&ray, 0_f64, t_min) {
             for o in &self.tetrahedrons {
                 if let Some(hit) = o.hits(&ray, 0_f64, t_min) {
-                    if hit.t < t_min && hit.t >= tmin && hit.t <= tmax {
+                    if hit.t < t_min  && hit.t >= tmin && hit.t <= tmax {
                         t_min = hit.t;
                         hit_min = Some(hit);
                     }
@@ -355,62 +377,78 @@ impl Owl {
         let head_radius = body_height / 4.;
         let body = Ellipsoid::new(
             base.clone(),
-            Vec3::new(head_radius * 1.2, body_height / 2., head_radius * 1.2),
+            Vec3::new(head_radius * 1.2,
+                      body_height / 2.,
+                      head_radius * 1.2),
             brown.clone(),
-        );
+            );
         let head = Sphere::new(
-            Vec3::new(base.x, base.y + height * 0.4 + head_radius / 2., base.z),
+            Vec3::new(base.x,
+                      base.y + height * 0.4 + head_radius / 2.,
+                      base.z),
             head_radius,
             brown.clone(),
-        );
+            );
         let eye_y = base.y + height * 0.4 + head_radius * 1.2;
         let right_eye = Sphere::new(
             Vec3::new(
                 base.x + head_radius * 0.4,
                 eye_y,
-                base.z - head_radius * 0.55,
-            ),
+                base.z - head_radius * 0.55),
             head_radius * 0.1,
-            black.clone(),
-        );
+            black.clone()
+            );
         let left_eye = Sphere::new(
             Vec3::new(
                 base.x - head_radius * 0.4,
                 eye_y,
-                base.z - head_radius * 0.55,
-            ),
+                base.z - head_radius * 0.55),
             head_radius * 0.1,
-            black.clone(),
-        );
+            black.clone()
+            );
         let beak = Ellipsoid::new(
             Vec3::new(
                 base.x,
                 base.y + height * 0.4 + head_radius,
-                base.z - head_radius * 0.9,
-            ),
-            Vec3::new(head_radius * 0.1, head_radius * 0.2, head_radius * 0.1),
-            black.clone(),
-        );
+                base.z - head_radius * 0.9
+                ),
+            Vec3::new(head_radius * 0.1,
+                      head_radius * 0.2,
+                      head_radius * 0.1),
+            black.clone()
+            );
         let ear_y = base.y + height * 0.4 + head_radius * 2.2;
         let left_ear = Tetrahedron::new(
-            Vec3::new(base.x - head_radius * 0.5, ear_y, base.z),
+            Vec3::new(
+                base.x - head_radius * 0.5,
+                ear_y,
+                base.z
+            ),
             head_radius * 2.,
             head_radius * 0.4,
             0.,
-            brown.clone(),
-        );
+            brown.clone()
+            );
         let right_ear = Tetrahedron::new(
-            Vec3::new(base.x + head_radius * 0.5, ear_y, base.z),
+            Vec3::new(
+                base.x + head_radius * 0.5,
+                ear_y,
+                base.z
+            ),
             head_radius * 2.,
             head_radius * 0.4,
             0.,
-            brown.clone(),
-        );
+            brown.clone()
+            );
         let bs = Sphere::new(
-            Vec3::new(base.x, base.y + height / 2., base.z),
+            Vec3::new(
+                base.x,
+                base.y + height / 2.,
+                base.z,
+            ),
             height * 0.7,
-            Rgb([0, 0, 0]),
-        );
+            Rgb([0, 0, 0])
+            );
 
         objs.push(Box::new(body));
         objs.push(Box::new(head));
@@ -432,7 +470,7 @@ impl Object for Owl {
         if let Some(_) = self.bounding_sphere.hits(&ray, 0_f64, t_min) {
             for o in &self.objects {
                 if let Some(hit) = o.hits(&ray, 0_f64, t_min) {
-                    if hit.t < t_min && hit.t >= tmin && hit.t <= tmax {
+                    if hit.t < t_min  && hit.t >= tmin && hit.t <= tmax {
                         t_min = hit.t;
                         hit_min = Some(hit);
                     }
@@ -452,45 +490,46 @@ impl Signature {
     pub fn new(ray_ctx: &RayCtx) -> Signature {
         let mut objs: Vec<Box<Object + Sync + Send>> = Vec::new();
         /* compute radius + bottom left pos */
-        let diameter = 0.008
-            * ray_ctx
-                .p_bottom_right
-                .length_sq_to(&ray_ctx.p_top_right)
-                .sqrt();
+        let diameter = 0.008 * ray_ctx.p_bottom_right.length_sq_to(&ray_ctx.p_top_right).sqrt();
         let radius = diameter / 2.;
-        let c = ray_ctx
-            .eye
-            .origin
-            .translate(&ray_ctx.eye.direction, 1. + 2. * diameter);
+        let c = ray_ctx.eye.origin.translate(&ray_ctx.eye.direction,
+                                             1. + 2. * diameter);
         let bottom_right = Vec3::new(
             c.x + ray_ctx.b.x - ray_ctx.v.x / ray_ctx.aspect_ratio,
             c.y + ray_ctx.b.y - ray_ctx.v.y / ray_ctx.aspect_ratio,
-            c.z + ray_ctx.b.z - ray_ctx.v.z / ray_ctx.aspect_ratio,
-        );
+            c.z + ray_ctx.b.z - ray_ctx.v.z / ray_ctx.aspect_ratio);
         let base = Vec3::new(
-            bottom_right.x - 25. * diameter * ray_ctx.b.x + 2. * diameter * ray_ctx.v.x,
-            bottom_right.y - 25. * diameter * ray_ctx.b.y + 2. * diameter * ray_ctx.v.y,
-            bottom_right.z - 25. * diameter * ray_ctx.b.z + 2. * diameter * ray_ctx.v.z,
-        );
+            bottom_right.x - 25. * diameter * ray_ctx.b.x
+                + 2. * diameter * ray_ctx.v.x,
+            bottom_right.y - 25. * diameter * ray_ctx.b.y
+                + 2. * diameter * ray_ctx.v.y,
+            bottom_right.z - 25. * diameter * ray_ctx.b.z
+                + 2. * diameter * ray_ctx.v.z);
         let color = Rgb([254, 55, 32]);
         let mut add_point = |x: f64, y: f64| {
             let v = Vec3::new(
-                base.x + x * diameter * ray_ctx.b.x + y * diameter * ray_ctx.v.x,
-                base.y + x * diameter * ray_ctx.b.y + y * diameter * ray_ctx.v.y,
-                base.z + x * diameter * ray_ctx.b.z + y * diameter * ray_ctx.v.z,
-            );
-            let sphere = Sphere::new(v, radius, color.clone());
+                    base.x + x * diameter * ray_ctx.b.x + y * diameter * ray_ctx.v.x,
+                    base.y + x * diameter * ray_ctx.b.y + y * diameter * ray_ctx.v.y,
+                    base.z + x * diameter * ray_ctx.b.z + y * diameter * ray_ctx.v.z);
+            let sphere = Sphere::new(
+                v,
+                radius,
+                color.clone()
+                );
             objs.push(Box::new(sphere));
         };
         let bs = Sphere::new(
             Vec3::new(
-                base.x + 12.5 * diameter * ray_ctx.b.x + 2.5 * diameter * ray_ctx.v.x,
-                base.y + 12.5 * diameter * ray_ctx.b.y + 2.5 * diameter * ray_ctx.v.y,
-                base.z + 12.5 * diameter * ray_ctx.b.z + 2.5 * diameter * ray_ctx.v.z,
+                base.x + 12.5 * diameter * ray_ctx.b.x
+                    + 2.5 * diameter * ray_ctx.v.x,
+                base.y + 12.5 * diameter * ray_ctx.b.y
+                    + 2.5 * diameter * ray_ctx.v.y,
+                base.z + 12.5 * diameter * ray_ctx.b.z
+                    + 2.5 * diameter * ray_ctx.v.z,
             ),
             16. * diameter,
-            Rgb([0, 0, 0]),
-        );
+            Rgb([0, 0, 0])
+            );
         /* B */
         add_point(0., 0.);
         add_point(0., 1.);
@@ -572,7 +611,7 @@ impl Object for Signature {
         if let Some(_) = self.bounding_sphere.hits(&ray, 0_f64, t_min) {
             for o in &self.objects {
                 if let Some(hit) = o.hits(&ray, 0_f64, t_min) {
-                    if hit.t < t_min && hit.t >= tmin && hit.t <= tmax {
+                    if hit.t < t_min  && hit.t >= tmin && hit.t <= tmax {
                         t_min = hit.t;
                         hit_min = Some(hit);
                     }
