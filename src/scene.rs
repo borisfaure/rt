@@ -64,6 +64,8 @@ impl Scene {
             0.9,
         )));
     }
+    pub fn save(&self, path: &str) {
+    }
 
     pub fn generate_forest_monte_carlo(
         &mut self,
