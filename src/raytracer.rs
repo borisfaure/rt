@@ -1,7 +1,6 @@
 use crate::maths::{Vec3, EPSILON};
-use crate::object::{Object, Plan};
+use crate::object::{Object};
 use crate::scene::Scene;
-use chrono::prelude::*;
 use chrono::{DateTime, Local};
 use color_scaling::scale_rgb;
 use image::{ImageBuffer, Rgb, RgbImage};
@@ -10,7 +9,6 @@ use rayon::prelude::*;
 use std::f64;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use time::Duration;
 
 pub static DEPTH_MAX: u8 = 8;
 

@@ -1,5 +1,5 @@
 use crate::maths::Vec3;
-use crate::object::{Conifer, Object, Owl, Sphere};
+use crate::object::{Conifer, Object, Owl};
 use crate::raytracer::Footprint;
 use image::Rgb;
 use rand::Rng;
