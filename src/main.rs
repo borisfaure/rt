@@ -9,6 +9,10 @@ extern crate clap;
 extern crate rand;
 extern crate rayon;
 extern crate regex;
+#[macro_use]
+extern crate serde_derive;
+extern crate serde;
+extern crate serde_json;
 
 use clap::{
    App,
@@ -40,7 +44,6 @@ use maths::{
 };
 use object::{
     Plan,
-    Signature,
 };
 
 
@@ -197,10 +200,9 @@ fn main() {
         info!("footprint:{:?}", footprint);
         scene.add(floor);
         let trees = scene.generate_forest_monte_carlo(&footprint,
-                                                      preset.density, false);
+                                                      preset.density);
         info!("trees:{:?}", trees);
-        let signature = Signature::new(&ray_ctx);
-        scene.add(signature);
+        scene.add_signature(&ray_ctx);
 
         scene.save(cfgpath);
     } else if let Some(m) = m.subcommand_matches("render") {
@@ -246,12 +248,6 @@ fn main() {
         let footprint = ray_ctx.get_footprint(&floor);
         info!("footprint:{:?}", footprint);
         scene.add(floor);
-        let trees = scene.generate_forest_monte_carlo(&footprint,
-                                                      preset.density, false);
-        info!("trees:{:?}", trees);
-        let signature = Signature::new(&ray_ctx);
-        scene.add(signature);
-
 
         let img : RgbImage = ray_ctx.render_scene(&scene, preset.nb_samples);
 

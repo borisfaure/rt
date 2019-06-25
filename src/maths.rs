@@ -5,7 +5,7 @@ use std::mem;
 
 pub const EPSILON: f64 = 0.000001;
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Vec3 {
     pub x: f64,
     pub y: f64,

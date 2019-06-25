@@ -1,6 +1,9 @@
 use crate::maths::Vec3;
-use crate::object::{Conifer, Object, Owl};
-use crate::raytracer::Footprint;
+use crate::object::{Sphere, Conifer, Object};
+use crate::raytracer::{
+    Footprint,
+    RayCtx,
+};
 use image::Rgb;
 use rand::Rng;
 use std::f64::{self, consts::PI};
@@ -67,11 +70,109 @@ impl Scene {
     pub fn save(&self, path: &str) {
     }
 
+    pub fn add_signature(&mut self, ray_ctx: &RayCtx) {
+        /* compute radius + bottom left pos */
+        let diameter = 0.008 * ray_ctx.p_bottom_right.length_sq_to(&ray_ctx.p_top_right).sqrt();
+        let radius = diameter / 2.;
+        let c = ray_ctx.eye.origin.translate(&ray_ctx.eye.direction,
+                                             1. + 2. * diameter);
+        let bottom_right = Vec3::new(
+            c.x + ray_ctx.b.x - ray_ctx.v.x / ray_ctx.aspect_ratio,
+            c.y + ray_ctx.b.y - ray_ctx.v.y / ray_ctx.aspect_ratio,
+            c.z + ray_ctx.b.z - ray_ctx.v.z / ray_ctx.aspect_ratio);
+        let base = Vec3::new(
+            bottom_right.x - 25. * diameter * ray_ctx.b.x
+                + 2. * diameter * ray_ctx.v.x,
+            bottom_right.y - 25. * diameter * ray_ctx.b.y
+                + 2. * diameter * ray_ctx.v.y,
+            bottom_right.z - 25. * diameter * ray_ctx.b.z
+                + 2. * diameter * ray_ctx.v.z);
+        let color = Rgb([254, 55, 32]);
+        let mut add_point = |x: f64, y: f64| {
+            let v = Vec3::new(
+                    base.x + x * diameter * ray_ctx.b.x + y * diameter * ray_ctx.v.x,
+                    base.y + x * diameter * ray_ctx.b.y + y * diameter * ray_ctx.v.y,
+                    base.z + x * diameter * ray_ctx.b.z + y * diameter * ray_ctx.v.z);
+            let sphere = Sphere::new(
+                v,
+                radius,
+                color.clone()
+                );
+            self.add(sphere);
+        };
+        /* B */
+        add_point(0., 0.);
+        add_point(0., 1.);
+        add_point(0., 2.);
+        add_point(0., 3.);
+        add_point(0., 4.);
+        add_point(1., 0.);
+        add_point(1., 2.);
+        add_point(1., 4.);
+        add_point(2., 1.);
+        add_point(2., 3.);
+        /* . */
+        add_point(4., 0.);
+        /* F */
+        add_point(6., 0.);
+        add_point(6., 1.);
+        add_point(6., 2.);
+        add_point(6., 3.);
+        add_point(6., 4.);
+        add_point(7., 2.);
+        add_point(7., 4.);
+        add_point(8., 4.);
+        /* A */
+        add_point(10., 0.);
+        add_point(10., 1.);
+        add_point(10., 2.);
+        add_point(10., 3.);
+        add_point(11., 2.);
+        add_point(11., 4.);
+        add_point(12., 0.);
+        add_point(12., 1.);
+        add_point(12., 2.);
+        add_point(12., 3.);
+        /* U */
+        add_point(14., 0.);
+        add_point(14., 1.);
+        add_point(14., 2.);
+        add_point(14., 3.);
+        add_point(14., 4.);
+        add_point(15., 0.);
+        add_point(16., 0.);
+        add_point(16., 1.);
+        add_point(16., 2.);
+        add_point(16., 3.);
+        add_point(16., 4.);
+        /* R */
+        add_point(18., 0.);
+        add_point(18., 1.);
+        add_point(18., 2.);
+        add_point(18., 3.);
+        add_point(18., 4.);
+        add_point(19., 2.);
+        add_point(19., 4.);
+        add_point(20., 0.);
+        add_point(20., 1.);
+        add_point(20., 3.);
+        /* E */
+        add_point(22., 0.);
+        add_point(22., 1.);
+        add_point(22., 2.);
+        add_point(22., 3.);
+        add_point(22., 4.);
+        add_point(23., 0.);
+        add_point(23., 2.);
+        add_point(23., 4.);
+        add_point(24., 0.);
+        add_point(24., 4.);
+    }
+
     pub fn generate_forest_monte_carlo(
         &mut self,
         footprint: &Footprint,
-        threshold: f64,
-        add_owl: bool,
+        threshold: f64
     ) -> u32 {
         let mut rng = rand::thread_rng();
         let mut width = 1.5_f64;
@@ -82,7 +183,6 @@ impl Scene {
         let mut trees = 0_u32;
         let mut tries = 0_u32;
         let decreasing_factor = 0.8_f64;
-        let mut owl_added = !add_owl;
 
         loop {
             let i = rng.gen::<f64>();
@@ -102,19 +202,6 @@ impl Scene {
             } else {
                 tries = 0;
                 let conifer = Conifer::new(pos, this_width, 5_u8);
-                if !owl_added && i >= 0.2 && i <= 0.8 && j >= 0.2 && j <= 0.7 {
-                    let height = conifer.height * 0.25;
-                    let owl = Owl::new(
-                        Vec3::new(
-                            conifer.top.x,
-                            conifer.top.y - 0.1 * conifer.height,
-                            conifer.top.z,
-                        ),
-                        height,
-                    );
-                    self.add(owl);
-                    owl_added = true;
-                }
                 self.add(conifer);
                 vec.push(c);
                 trees += 1;
