@@ -1,31 +1,17 @@
+use crate::maths::{solve_3variable_system, Vec3, EPSILON};
+use crate::raytracer::{Hit, Ray};
 use color_scaling::scale_rgb;
-use image::{
-    Rgb,
-};
+use image::Rgb;
 use rand::Rng;
-use crate::raytracer::{
-    Ray,
-    Hit,
-};
-use crate::maths::{
-    EPSILON,
-    Vec3,
-    solve_3variable_system,
-};
-use serde::{Serialize, Deserialize};
-use std::f64::{
-    self,
-    consts::PI,
-};
+use serde::{Deserialize, Serialize};
+use std::f64::{self, consts::PI};
 
-
-pub trait ObjectTrait : erased_serde::Serialize {
+pub trait ObjectTrait {
     fn hits(&self, r: &Ray, tmin: f64, tmax: f64) -> Option<Hit>;
 }
-serialize_trait_object!(ObjectTrait);
 
 /* {{{ Plan */
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Plan {
     p: Vec3,
     normal: Vec3,
@@ -77,7 +63,7 @@ impl Sphere {
             center: center,
             radius: radius,
             rd_sq: radius * radius,
-            color: color.into()
+            color: color.into(),
         }
     }
 }
@@ -88,12 +74,12 @@ impl ObjectTrait for Sphere {
         let a = ray.direction.dot_product(&ray.direction);
         let b = oc.dot_product(&ray.direction);
         let c = oc.dot_product(&oc) - self.rd_sq;
-        let discrimant = b*b - a*c;
+        let discrimant = b * b - a * c;
         if discrimant <= 0_f64 {
             return None;
         }
         let discrimant_sqrt = discrimant.sqrt();
-        let t1 = (-b - discrimant_sqrt ) / a;
+        let t1 = (-b - discrimant_sqrt) / a;
         if tmin < t1 && t1 < tmax {
             let p = ray.at(t1);
             let mut n = self.center.to(&p);
@@ -106,7 +92,7 @@ impl ObjectTrait for Sphere {
             };
             return Some(h);
         }
-        let t2 = (-b + discrimant_sqrt ) / a;
+        let t2 = (-b + discrimant_sqrt) / a;
         if tmin < t2 && t2 < tmax {
             let p = ray.at(t2);
             let mut n = self.center.to(&p);
@@ -125,7 +111,7 @@ impl ObjectTrait for Sphere {
 
 /* }}} */
 /* {{{ Ellipsoid */
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Ellipsoid {
     center: Vec3,
     translation: Vec3,
@@ -134,7 +120,7 @@ pub struct Ellipsoid {
     sphere: Sphere,
 }
 impl Ellipsoid {
-    pub fn new(center: Vec3, radii: Vec3, color: Rgb<u8>) -> Ellipsoid{
+    pub fn new(center: Vec3, radii: Vec3, color: Rgb<u8>) -> Ellipsoid {
         let center = center;
         let translation = center.opposite();
         let inv_radii = radii.invert();
@@ -175,7 +161,7 @@ impl ObjectTrait for Ellipsoid {
 /* }}} */
 /* Triangle {{{ */
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Triangle {
     a: Vec3,
     b: Vec3,
@@ -220,7 +206,7 @@ impl ObjectTrait for Triangle {
         let p = ray.at(t);
         let o = solve_3variable_system(&self.a, &self.b, &self.c, &p);
         if let Some(w) = o {
-            if w.x < 0.|| w.y < 0. || w.z < 0. {
+            if w.x < 0. || w.y < 0. || w.z < 0. {
                 return None;
             }
             let h = Hit {
@@ -237,7 +223,7 @@ impl ObjectTrait for Triangle {
 /* }}} */
 /* Tetrahedron {{{ */
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Tetrahedron {
     base: Triangle,
     side1: Triangle,
@@ -251,17 +237,17 @@ impl Tetrahedron {
         let A = Vec3::new(
             bottom_center.x + width * (angle + 2. * PI / 3.).cos(),
             bottom_center.y,
-            bottom_center.z + width * (angle + 2. * PI / 3.).sin()
+            bottom_center.z + width * (angle + 2. * PI / 3.).sin(),
         );
         let B = Vec3::new(
             bottom_center.x + width * (angle + 4. * PI / 3.).cos(),
             bottom_center.y,
-            bottom_center.z + width * (angle + 4. * PI / 3.).sin()
+            bottom_center.z + width * (angle + 4. * PI / 3.).sin(),
         );
         let C = Vec3::new(
             bottom_center.x + width * (angle).cos(),
             bottom_center.y,
-            bottom_center.z + width * (angle).sin()
+            bottom_center.z + width * (angle).sin(),
         );
         Tetrahedron {
             base: Triangle::new_ref(&A, &C, &B, &color),
@@ -278,7 +264,7 @@ impl ObjectTrait for Tetrahedron {
         let mut hit_min = None;
         for o in vec![&self.base, &self.side1, &self.side2, &self.side3] {
             if let Some(hit) = o.hits(&ray, 0_f64, t_min) {
-                if hit.t < t_min  && hit.t >= tmin && hit.t <= tmax {
+                if hit.t < t_min && hit.t >= tmin && hit.t <= tmax {
                     t_min = hit.t;
                     hit_min = Some(hit);
                 }
@@ -289,7 +275,7 @@ impl ObjectTrait for Tetrahedron {
 }
 /* }}} */
 /* Conifer {{{ */
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Conifer {
     tetrahedrons: Vec<Tetrahedron>,
     bounding_sphere: Sphere,
@@ -297,7 +283,7 @@ pub struct Conifer {
     pub height: f64,
     color: Vec3,
 }
-const CONIFER_RATIO : f64 = 1.8;
+const CONIFER_RATIO: f64 = 1.8;
 impl Conifer {
     pub fn new(base: Vec3, base_width: f64, steps: u8) -> Conifer {
         let mut rng = rand::thread_rng();
@@ -308,19 +294,15 @@ impl Conifer {
         let mut top = Vec3 {
             x: base.x,
             y: base.y + height,
-            z: base.z
+            z: base.z,
         };
         let g1 = Rgb([0, 151, 0]);
         let g2 = Rgb([61, 159, 73]);
         let color = scale_rgb(&g1, &g2, rng.gen::<f64>()).unwrap();
         for i in 0..steps {
-            let th = Tetrahedron::new(
-                top.clone(),
-                height, width, angle,
-                color.clone()
-                );
+            let th = Tetrahedron::new(top.clone(), height, width, angle, color.clone());
             // next loop
-            if i != steps -1 {
+            if i != steps - 1 {
                 top.y -= height * 0.6;
                 angle += PI;
                 width *= 0.8;
@@ -332,14 +314,10 @@ impl Conifer {
             tetrahedrons.push(th);
         }
         let bs = Sphere::new(
-            Vec3::new(
-                base.x,
-                base.y + (top.y - base.y) / 3.,
-                base.z,
-            ),
+            Vec3::new(base.x, base.y + (top.y - base.y) / 3., base.z),
             (top.y - base.y) * 0.8,
-            Rgb([0, 0, 0])
-            );
+            Rgb([0, 0, 0]),
+        );
         let height = top.y - base.y;
         Conifer {
             tetrahedrons: tetrahedrons,
@@ -357,7 +335,7 @@ impl ObjectTrait for Conifer {
         if let Some(_) = self.bounding_sphere.hits(&ray, 0_f64, t_min) {
             for o in &self.tetrahedrons {
                 if let Some(hit) = o.hits(&ray, 0_f64, t_min) {
-                    if hit.t < t_min  && hit.t >= tmin && hit.t <= tmax {
+                    if hit.t < t_min && hit.t >= tmin && hit.t <= tmax {
                         t_min = hit.t;
                         hit_min = Some(hit);
                     }
@@ -368,3 +346,25 @@ impl ObjectTrait for Conifer {
     }
 }
 /* }}} */
+
+#[derive(Clone, Serialize, Deserialize)]
+pub enum BaseObject {
+    Plan(Plan),
+    Sphere(Sphere),
+    Ellipsoid(Ellipsoid),
+    Triangle(Triangle),
+    Tetrahedron(Tetrahedron),
+    Conifer(Conifer),
+}
+impl ObjectTrait for BaseObject {
+    fn hits(&self, ray: &Ray, tmin: f64, tmax: f64) -> Option<Hit> {
+        match self {
+            BaseObject::Plan(p) => p.hits(ray, tmin, tmax),
+            BaseObject::Sphere(s) => s.hits(ray, tmin, tmax),
+            BaseObject::Ellipsoid(e) => e.hits(ray, tmin, tmax),
+            BaseObject::Triangle(t) => t.hits(ray, tmin, tmax),
+            BaseObject::Tetrahedron(t) => t.hits(ray, tmin, tmax),
+            BaseObject::Conifer(c) => c.hits(ray, tmin, tmax),
+        }
+    }
+}

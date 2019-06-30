@@ -1,25 +1,22 @@
 use crate::maths::Vec3;
-use crate::object::{Sphere, Conifer, ObjectTrait};
-use crate::raytracer::{
-    Footprint,
-    RayCtx,
-};
+use crate::object::{BaseObject, Conifer, Sphere};
+use crate::raytracer::{Footprint, RayCtx};
 use image::Rgb;
 use rand::Rng;
+use serde::{Deserialize, Serialize};
+use std::error::Error;
 use std::f64::{self, consts::PI};
 use std::fs::File;
+use std::io::BufReader;
 use std::path::Path;
-use std::error::Error;
-use std::io::prelude::*;
-use serde::{Serialize, Deserialize};
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct Scene {
-    pub objects: Vec<Box<ObjectTrait + Sync + Send>>,
+    pub objects: Vec<BaseObject>,
     pub sun: Option<(Vec3, Vec3, f64)>,
 }
 
-
+/* {{{ Circle */
 struct Circle {
     center: Vec3,
     radix: f64,
@@ -46,6 +43,7 @@ impl Circle {
         false
     }
 }
+/* }}} */
 
 impl Scene {
     pub fn new() -> Scene {
@@ -54,8 +52,8 @@ impl Scene {
             sun: None,
         }
     }
-    pub fn add<O: 'static + ObjectTrait + Sync + Send>(&mut self, obj: O) {
-        self.objects.push(Box::new(obj));
+    pub fn add(&mut self, obj: BaseObject) {
+        self.objects.push(obj);
     }
     pub fn set_sun(&mut self, sun: Option<(Vec3, Vec3, f64)>) {
         self.sun = sun;
@@ -74,12 +72,29 @@ impl Scene {
             0.9,
         )));
     }
+    pub fn load(json_file_path: &Path) -> Scene {
+        let f = match File::open(&json_file_path) {
+            Err(why) => {
+                let display = json_file_path.display();
+                panic!("couldn't open {}: {}", display, why.description())
+            }
+            Ok(file) => file,
+        };
+        let reader = BufReader::new(f);
+        match serde_json::from_reader(reader) {
+            Err(why) => {
+                let display = json_file_path.display();
+                panic!("couldn't open {}: {}", display, why.description())
+            }
+            Ok(s) => s,
+        }
+    }
     pub fn save(&self, json_file_path: &Path) {
         let f = match File::create(&json_file_path) {
             Err(why) => {
                 let display = json_file_path.display();
                 panic!("couldn't create {}: {}", display, why.description())
-            },
+            }
             Ok(file) => file,
         };
         if let Err(why) = serde_json::to_writer_pretty(f, self) {
@@ -90,33 +105,35 @@ impl Scene {
 
     pub fn add_signature(&mut self, ray_ctx: &RayCtx) {
         /* compute radius + bottom left pos */
-        let diameter = 0.008 * ray_ctx.p_bottom_right.length_sq_to(&ray_ctx.p_top_right).sqrt();
+        let diameter = 0.008
+            * ray_ctx
+                .p_bottom_right
+                .length_sq_to(&ray_ctx.p_top_right)
+                .sqrt();
         let radius = diameter / 2.;
-        let c = ray_ctx.eye.origin.translate(&ray_ctx.eye.direction,
-                                             1. + 2. * diameter);
+        let c = ray_ctx
+            .eye
+            .origin
+            .translate(&ray_ctx.eye.direction, 1. + 2. * diameter);
         let bottom_right = Vec3::new(
             c.x + ray_ctx.b.x - ray_ctx.v.x / ray_ctx.aspect_ratio,
             c.y + ray_ctx.b.y - ray_ctx.v.y / ray_ctx.aspect_ratio,
-            c.z + ray_ctx.b.z - ray_ctx.v.z / ray_ctx.aspect_ratio);
+            c.z + ray_ctx.b.z - ray_ctx.v.z / ray_ctx.aspect_ratio,
+        );
         let base = Vec3::new(
-            bottom_right.x - 25. * diameter * ray_ctx.b.x
-                + 2. * diameter * ray_ctx.v.x,
-            bottom_right.y - 25. * diameter * ray_ctx.b.y
-                + 2. * diameter * ray_ctx.v.y,
-            bottom_right.z - 25. * diameter * ray_ctx.b.z
-                + 2. * diameter * ray_ctx.v.z);
+            bottom_right.x - 25. * diameter * ray_ctx.b.x + 2. * diameter * ray_ctx.v.x,
+            bottom_right.y - 25. * diameter * ray_ctx.b.y + 2. * diameter * ray_ctx.v.y,
+            bottom_right.z - 25. * diameter * ray_ctx.b.z + 2. * diameter * ray_ctx.v.z,
+        );
         let color = Rgb([254, 55, 32]);
         let mut add_point = |x: f64, y: f64| {
             let v = Vec3::new(
-                    base.x + x * diameter * ray_ctx.b.x + y * diameter * ray_ctx.v.x,
-                    base.y + x * diameter * ray_ctx.b.y + y * diameter * ray_ctx.v.y,
-                    base.z + x * diameter * ray_ctx.b.z + y * diameter * ray_ctx.v.z);
-            let sphere = Sphere::new(
-                v,
-                radius,
-                color.clone()
-                );
-            self.add(sphere);
+                base.x + x * diameter * ray_ctx.b.x + y * diameter * ray_ctx.v.x,
+                base.y + x * diameter * ray_ctx.b.y + y * diameter * ray_ctx.v.y,
+                base.z + x * diameter * ray_ctx.b.z + y * diameter * ray_ctx.v.z,
+            );
+            let sphere = Sphere::new(v, radius, color.clone());
+            self.add(BaseObject::Sphere(sphere));
         };
         /* B */
         add_point(0., 0.);
@@ -187,11 +204,7 @@ impl Scene {
         add_point(24., 4.);
     }
 
-    pub fn generate_forest_monte_carlo(
-        &mut self,
-        footprint: &Footprint,
-        threshold: f64
-    ) -> u32 {
+    pub fn generate_forest_monte_carlo(&mut self, footprint: &Footprint, threshold: f64) -> u32 {
         let mut rng = rand::thread_rng();
         let mut width = 1.5_f64;
         let mut r = width / 4_f64;
@@ -220,7 +233,7 @@ impl Scene {
             } else {
                 tries = 0;
                 let conifer = Conifer::new(pos, this_width, 5_u8);
-                self.add(conifer);
+                self.add(BaseObject::Conifer(conifer));
                 vec.push(c);
                 trees += 1;
                 surface += PI * this_r * this_r;

@@ -1,5 +1,5 @@
 use crate::maths::{Vec3, EPSILON};
-use crate::object::{ObjectTrait};
+use crate::object::{ObjectTrait, Plan};
 use crate::scene::Scene;
 use chrono::{DateTime, Local};
 use color_scaling::scale_rgb;
@@ -154,7 +154,7 @@ impl RayCtx {
         }
     }
 
-    pub fn get_footprint(&self, floor: &ObjectTrait) -> Footprint {
+    pub fn get_footprint(&self, floor: &Plan) -> Footprint {
         let ft = |i, j| {
             let r = Ray::new(&self, i, j);
             let h = floor.hits(&r, 0_f64, f64::INFINITY);
