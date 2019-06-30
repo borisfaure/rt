@@ -1,5 +1,5 @@
 use crate::maths::Vec3;
-use crate::object::{Sphere, Conifer, Object};
+use crate::object::{Sphere, Conifer, ObjectTrait};
 use crate::raytracer::{
     Footprint,
     RayCtx,
@@ -7,11 +7,13 @@ use crate::raytracer::{
 use image::Rgb;
 use rand::Rng;
 use std::f64::{self, consts::PI};
+use serde::{Serialize, Deserialize};
 
 pub struct Scene {
-    pub objects: Vec<Box<Object + Sync + Send>>,
+    pub objects: Vec<Box<ObjectTrait + Sync + Send>>,
     pub sun: Option<(Vec3, Vec3, f64)>,
 }
+
 
 struct Circle {
     center: Vec3,
@@ -47,7 +49,7 @@ impl Scene {
             sun: None,
         }
     }
-    pub fn add<O: 'static + Object + Sync + Send>(&mut self, obj: O) {
+    pub fn add<O: 'static + ObjectTrait + Sync + Send>(&mut self, obj: O) {
         self.objects.push(Box::new(obj));
     }
     pub fn set_sun(&mut self, sun: Option<(Vec3, Vec3, f64)>) {

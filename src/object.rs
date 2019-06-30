@@ -19,9 +19,10 @@ use std::f64::{
 };
 
 
-pub trait Object {
+pub trait ObjectTrait : erased_serde::Serialize {
     fn hits(&self, r: &Ray, tmin: f64, tmax: f64) -> Option<Hit>;
 }
+serialize_trait_object!(ObjectTrait);
 
 /* {{{ Plan */
 #[derive(Serialize, Deserialize)]
@@ -39,7 +40,7 @@ impl Plan {
         }
     }
 }
-impl Object for Plan {
+impl ObjectTrait for Plan {
     fn hits(&self, ray: &Ray, tmin: f64, tmax: f64) -> Option<Hit> {
         let dn = ray.direction.dot_product(&self.normal);
         if dn >= EPSILON {
@@ -81,7 +82,7 @@ impl Sphere {
     }
 }
 
-impl Object for Sphere {
+impl ObjectTrait for Sphere {
     fn hits(&self, ray: &Ray, tmin: f64, tmax: f64) -> Option<Hit> {
         let oc = self.center.to(&ray.origin);
         let a = ray.direction.dot_product(&ray.direction);
@@ -148,7 +149,7 @@ impl Ellipsoid {
     }
 }
 
-impl Object for Ellipsoid {
+impl ObjectTrait for Ellipsoid {
     fn hits(&self, ray: &Ray, tmin: f64, tmax: f64) -> Option<Hit> {
         let ray2 = Ray {
             origin: ray.origin.addv(&self.translation).multv(&self.inv_radii),
@@ -204,7 +205,7 @@ impl Triangle {
         }
     }
 }
-impl Object for Triangle {
+impl ObjectTrait for Triangle {
     fn hits(&self, ray: &Ray, tmin: f64, tmax: f64) -> Option<Hit> {
         /* find intersection with the plan */
         let dn = ray.direction.dot_product(&self.normal);
@@ -271,7 +272,7 @@ impl Tetrahedron {
         }
     }
 }
-impl Object for Tetrahedron {
+impl ObjectTrait for Tetrahedron {
     fn hits(&self, ray: &Ray, tmin: f64, tmax: f64) -> Option<Hit> {
         let mut t_min = f64::INFINITY;
         let mut hit_min = None;
@@ -349,7 +350,7 @@ impl Conifer {
         }
     }
 }
-impl Object for Conifer {
+impl ObjectTrait for Conifer {
     fn hits(&self, ray: &Ray, tmin: f64, tmax: f64) -> Option<Hit> {
         let mut t_min = f64::INFINITY;
         let mut hit_min = None;

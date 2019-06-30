@@ -10,6 +10,8 @@ extern crate rand;
 extern crate rayon;
 extern crate regex;
 #[macro_use]
+extern crate erased_serde;
+#[macro_use]
 extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;
