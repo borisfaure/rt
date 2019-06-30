@@ -1,9 +1,9 @@
 extern crate image;
 #[macro_use]
 extern crate log;
-extern crate pretty_env_logger;
-extern crate color_scaling;
 extern crate chrono;
+extern crate color_scaling;
+extern crate pretty_env_logger;
 #[macro_use]
 extern crate clap;
 extern crate rand;
@@ -16,38 +16,20 @@ extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;
 
-use clap::{
-   App,
-   Arg,
-   SubCommand,
-};
-use image::{
-    Rgb,
-    RgbImage
-};
+use clap::{App, Arg, SubCommand};
+use image::{Rgb, RgbImage};
 use regex::Regex;
 
 mod maths;
 mod object;
-mod scene;
 mod raytracer;
+mod scene;
 
-
-use raytracer::{
-    Eye,
-    RayCtx,
-    Screen,
-};
-use scene::{
-    Scene
-};
-use maths::{
-    Vec3,
-};
-use object::{
-    Plan,
-};
-
+use maths::Vec3;
+use object::Plan;
+use raytracer::{Eye, RayCtx, Screen};
+use scene::Scene;
+use std::path::Path;
 
 struct Preset {
     eye: Eye,
@@ -206,7 +188,7 @@ fn main() {
         info!("trees:{:?}", trees);
         scene.add_signature(&ray_ctx);
 
-        scene.save(cfgpath);
+        scene.save(Path::new(cfgpath));
     } else if let Some(m) = m.subcommand_matches("render") {
         let pngpath = m.value_of("PNG").unwrap();
         let cfgpath = m.value_of("CFG").unwrap();

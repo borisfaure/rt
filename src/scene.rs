@@ -7,8 +7,13 @@ use crate::raytracer::{
 use image::Rgb;
 use rand::Rng;
 use std::f64::{self, consts::PI};
+use std::fs::File;
+use std::path::Path;
+use std::error::Error;
+use std::io::prelude::*;
 use serde::{Serialize, Deserialize};
 
+#[derive(Serialize)]
 pub struct Scene {
     pub objects: Vec<Box<ObjectTrait + Sync + Send>>,
     pub sun: Option<(Vec3, Vec3, f64)>,
@@ -69,7 +74,18 @@ impl Scene {
             0.9,
         )));
     }
-    pub fn save(&self, path: &str) {
+    pub fn save(&self, json_file_path: &Path) {
+        let f = match File::create(&json_file_path) {
+            Err(why) => {
+                let display = json_file_path.display();
+                panic!("couldn't create {}: {}", display, why.description())
+            },
+            Ok(file) => file,
+        };
+        if let Err(why) = serde_json::to_writer_pretty(f, self) {
+            let display = json_file_path.display();
+            panic!("couldn't create {}: {}", display, why.description())
+        }
     }
 
     pub fn add_signature(&mut self, ray_ctx: &RayCtx) {
