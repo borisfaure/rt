@@ -3,7 +3,6 @@ use crate::object::{BaseObject, Conifer, Sphere};
 use crate::raytracer::{Footprint, RayCtx};
 use image::Rgb;
 use rand::Rng;
-use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::f64::{self, consts::PI};
 use std::fs::File;

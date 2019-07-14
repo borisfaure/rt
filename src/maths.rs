@@ -202,10 +202,6 @@ impl Vec3 {
     }
 }
 
-pub fn remap_01(a: f64, b: f64, t: f64) -> f64 {
-    (t - a) / (b - a)
-}
-
 impl Into<Rgb<u8>> for Vec3 {
     fn into(self) -> Rgb<u8> {
         let convert = |v| {

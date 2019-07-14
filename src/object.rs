@@ -3,7 +3,6 @@ use crate::raytracer::{Hit, Ray};
 use color_scaling::scale_rgb;
 use image::Rgb;
 use rand::Rng;
-use serde::{Deserialize, Serialize};
 use std::f64::{self, consts::PI};
 
 pub trait ObjectTrait {
@@ -120,19 +119,19 @@ pub struct Ellipsoid {
     sphere: Sphere,
 }
 impl Ellipsoid {
-    pub fn new(center: Vec3, radii: Vec3, color: Rgb<u8>) -> Ellipsoid {
-        let center = center;
-        let translation = center.opposite();
-        let inv_radii = radii.invert();
-        let s = Sphere::new(Vec3::origin(), 1., color);
-        Ellipsoid {
-            center: center,
-            translation: translation,
-            radii: radii,
-            inv_radii: inv_radii,
-            sphere: s,
-        }
-    }
+//    pub fn new(center: Vec3, radii: Vec3, color: Rgb<u8>) -> Ellipsoid {
+//        let center = center;
+//        let translation = center.opposite();
+//        let inv_radii = radii.invert();
+//        let s = Sphere::new(Vec3::origin(), 1., color);
+//        Ellipsoid {
+//            center: center,
+//            translation: translation,
+//            radii: radii,
+//            inv_radii: inv_radii,
+//            sphere: s,
+//        }
+//    }
 }
 
 impl ObjectTrait for Ellipsoid {
@@ -170,9 +169,6 @@ pub struct Triangle {
     color: Vec3,
 }
 impl Triangle {
-    pub fn new(a: Vec3, b: Vec3, c: Vec3, color: Rgb<u8>) -> Triangle {
-        Triangle::new_ref(&a, &b, &c, &color)
-    }
     pub fn new_ref(a: &Vec3, b: &Vec3, c: &Vec3, color: &Rgb<u8>) -> Triangle {
         let a = a.new_clean();
         let b = b.new_clean();
@@ -180,8 +176,7 @@ impl Triangle {
 
         let ba = b.to(&a);
         let bc = b.to(&c);
-        let mut normal = ba.cross_product(&bc);
-        normal.normalize();
+        let normal = ba.cross_product(&bc).normalize();
         Triangle {
             a: a,
             b: b,
@@ -234,26 +229,26 @@ pub struct Tetrahedron {
 impl Tetrahedron {
     pub fn new(top: Vec3, height: f64, width: f64, angle: f64, color: Rgb<u8>) -> Tetrahedron {
         let bottom_center = Vec3::new(top.x, top.y - height, top.z);
-        let A = Vec3::new(
+        let a = Vec3::new(
             bottom_center.x + width * (angle + 2. * PI / 3.).cos(),
             bottom_center.y,
             bottom_center.z + width * (angle + 2. * PI / 3.).sin(),
         );
-        let B = Vec3::new(
+        let b = Vec3::new(
             bottom_center.x + width * (angle + 4. * PI / 3.).cos(),
             bottom_center.y,
             bottom_center.z + width * (angle + 4. * PI / 3.).sin(),
         );
-        let C = Vec3::new(
+        let c = Vec3::new(
             bottom_center.x + width * (angle).cos(),
             bottom_center.y,
             bottom_center.z + width * (angle).sin(),
         );
         Tetrahedron {
-            base: Triangle::new_ref(&A, &C, &B, &color),
-            side1: Triangle::new_ref(&A, &B, &top, &color),
-            side2: Triangle::new_ref(&B, &C, &top, &color),
-            side3: Triangle::new_ref(&C, &A, &top, &color),
+            base: Triangle::new_ref(&a, &c, &b, &color),
+            side1: Triangle::new_ref(&a, &b, &top, &color),
+            side2: Triangle::new_ref(&b, &c, &top, &color),
+            side3: Triangle::new_ref(&c, &a, &top, &color),
             color: color.into(),
         }
     }

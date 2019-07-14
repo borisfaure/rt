@@ -243,7 +243,7 @@ fn main() {
                 origin: eye_pos,
                 direction: eye_dir,
             },
-            nb_samples: 8_u64,
+            nb_samples: samples,
             screen: Screen {
                 width: w,
                 height: h,

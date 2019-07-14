@@ -257,8 +257,7 @@ impl Ray {
             ctx.p_bottom_left.z + i * ctx.hx.z + j * ctx.hy.z,
         );
 
-        let mut d = ctx.eye.origin.to(&screen_point);
-        d.normalize();
+        let d = ctx.eye.origin.to(&screen_point).normalize();
         let r = Ray {
             origin: ctx.eye.origin.clone(),
             direction: d,
@@ -295,7 +294,7 @@ fn hits(ray: &Ray, scene: &Scene) -> Hit {
 }
 
 fn color(ray: &Ray, scene: &Scene, depth: u8) -> Vec3 {
-    let mut hit_min = hits(ray, scene);
+    let hit_min = hits(ray, scene);
 
     if hit_min.t == f64::INFINITY {
         /* ray hit the sky */
