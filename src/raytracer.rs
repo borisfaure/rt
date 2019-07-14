@@ -3,7 +3,7 @@ use crate::object::{ObjectTrait, Plan};
 use crate::scene::Scene;
 use chrono::{DateTime, Local};
 use color_scaling::scale_rgb;
-use image::{ImageBuffer, Rgb, RgbImage};
+use image::{Rgb, Rgba, RgbaImage};
 use rand::Rng;
 use rayon::prelude::*;
 use std::f64;
@@ -172,23 +172,33 @@ impl RayCtx {
         }
     }
 
-    pub fn render_scene(&self, scene: &Scene, nsamples: u64) -> RgbImage {
-        let black: Rgb<u8> = Rgb([0, 0, 0]);
-        let mut buf: Vec<Rgb<u8>> = vec![black; (self.screen.width * self.screen.height) as usize];
+    pub fn render_scene(&self, scene: &Scene, nsamples: u64, pngpath: &str) {
+        let mut buf: RgbaImage;
+        let undone_color = Rgba([255u8, 0u8, 255u8, 0u8]);
+        if let Ok(img) = image::open(pngpath) {
+            buf = img.as_rgba8().unwrap().clone();
+            assert!(buf.height() == self.screen.height);
+            assert!(buf.width() == self.screen.width);
+        } else {
+            buf = image::RgbaImage::new(self.screen.width as u32,
+                                        self.screen.height as u32);
+            for (_, _, pixel) in buf.enumerate_pixels_mut() {
+                *pixel = undone_color;
+            }
+        }
         let max_rays = (self.screen.width as u64) * (self.screen.height as u64) * nsamples;
         let nb_rays = Arc::new(AtomicUsize::new(1));
         let start: DateTime<Local> = Local::now();
 
         debug!("rendering scene");
-        buf.par_iter_mut().enumerate().for_each(
-            //buf.iter_mut().enumerate().for_each(
-            |(n, pixel)| {
-                let y = (n as u32) / self.screen.width;
-                let x = (n as u32) - (y * self.screen.width);
-                let i_min = x as f64 / self.width;
-                let i_max = (x + 1) as f64 / self.width;
-                let j_min = y as f64 / self.height;
-                let j_max = (y + 1) as f64 / self.height;
+        buf.enumerate_pixels_mut()
+        .collect::<Vec<(u32, u32, &mut Rgba<u8>)>>()
+        .par_iter_mut()
+        .for_each(|(x, y, pixel)| {
+                let i_min = *x as f64 / self.width;
+                let i_max = (*x + 1) as f64 / self.width;
+                let j_min = *y as f64 / self.height;
+                let j_max = (*y + 1) as f64 / self.height;
 
                 let i_step = i_max - i_min;
                 let j_step = j_max - j_min;
@@ -212,7 +222,7 @@ impl RayCtx {
                 r /= nsamples as f64;
                 g /= nsamples as f64;
                 b /= nsamples as f64;
-                *pixel = Vec3::new(r, g, b).into();
+                **pixel = Vec3::new(r, g, b).into();
                 let nb_rays = nb_rays.fetch_add(nsamples as usize, Ordering::SeqCst);
                 let now: DateTime<Local> = Local::now();
                 let duration = now.signed_duration_since(start);
@@ -230,14 +240,8 @@ impl RayCtx {
                 );
             },
         );
-        let mut img: RgbImage = ImageBuffer::new(self.screen.width, self.screen.height);
-        for n in 0..(self.screen.width * self.screen.height) {
-            let y = (n as u32) / self.screen.width;
-            let x = (n as u32) - (y * self.screen.width);
-            img.put_pixel(x, y, buf[n as usize]);
-        }
 
-        img
+        buf.save(pngpath).ok();
     }
 
     fn cast_ray_from_eye(&self, scene: &Scene, i: f64, j: f64) -> Vec3 {

@@ -1,4 +1,4 @@
-use image::Rgb;
+use image::{Rgb, Rgba};
 use rand::Rng;
 use std::f64;
 use std::mem;
@@ -217,6 +217,23 @@ impl Into<Rgb<u8>> for Vec3 {
         let g = convert(self.y);
         let b = convert(self.z);
         Rgb([r, g, b])
+    }
+}
+impl Into<Rgba<u8>> for Vec3 {
+    fn into(self) -> Rgba<u8> {
+        let convert = |v| {
+            if v <= 0_f64 {
+                return 0_u8;
+            }
+            if v >= 1_f64 {
+                return 255_u8;
+            }
+            (v * 256_f64) as u8
+        };
+        let r = convert(self.x);
+        let g = convert(self.y);
+        let b = convert(self.z);
+        Rgba([r, g, b, 255u8])
     }
 }
 

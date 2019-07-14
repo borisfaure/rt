@@ -15,7 +15,7 @@ extern crate serde;
 extern crate serde_json;
 
 use clap::{App, Arg, SubCommand};
-use image::{Rgb, RgbImage};
+use image::{Rgb};
 use regex::Regex;
 
 mod maths;
@@ -252,8 +252,6 @@ fn main() {
 
         let ray_ctx = RayCtx::new(&preset.eye, &preset.screen);
 
-        let img: RgbImage = ray_ctx.render_scene(&scene, preset.nb_samples);
-
-        img.save(pngpath).unwrap();
+        ray_ctx.render_scene(&scene, preset.nb_samples, pngpath);
     }
 }
