@@ -180,54 +180,73 @@ impl RayCtx {
             assert!(buf.height() == self.screen.height);
             assert!(buf.width() == self.screen.width);
         } else {
-            buf = image::RgbaImage::new(self.screen.width as u32,
-                                        self.screen.height as u32);
+            buf = image::RgbaImage::new(self.screen.width as u32, self.screen.height as u32);
             for (_, _, pixel) in buf.enumerate_pixels_mut() {
                 *pixel = undone_color;
             }
         }
         let max_rays = (self.screen.width as u64) * (self.screen.height as u64) * nsamples;
         let nb_rays = Arc::new(AtomicUsize::new(1));
+        let nb_pix_this_session = Arc::new(AtomicUsize::new(1));
+        let nb_pix_to_see = self.screen.height * self.screen.width;
         let start: DateTime<Local> = Local::now();
 
         debug!("rendering scene");
         buf.enumerate_pixels_mut()
-        .collect::<Vec<(u32, u32, &mut Rgba<u8>)>>()
-        .par_iter_mut()
-        .for_each(|(x, y, pixel)| {
-                let i_min = *x as f64 / self.width;
-                let i_max = (*x + 1) as f64 / self.width;
-                let j_min = *y as f64 / self.height;
-                let j_max = (*y + 1) as f64 / self.height;
+            .collect::<Vec<(u32, u32, &mut Rgba<u8>)>>()
+            .par_iter_mut()
+            .for_each(|(x, y, pixel)| {
+                let worked;
+                if **pixel != undone_color {
+                    let i_min = *x as f64 / self.width;
+                    let i_max = (*x + 1) as f64 / self.width;
+                    let j_min = *y as f64 / self.height;
+                    let j_max = (*y + 1) as f64 / self.height;
 
-                let i_step = i_max - i_min;
-                let j_step = j_max - j_min;
+                    let i_step = i_max - i_min;
+                    let j_step = j_max - j_min;
 
-                let mut r = 0_f64;
-                let mut g = 0_f64;
-                let mut b = 0_f64;
+                    let mut r = 0_f64;
+                    let mut g = 0_f64;
+                    let mut b = 0_f64;
 
-                let mut rng = rand::thread_rng();
+                    let mut rng = rand::thread_rng();
 
-                for _ in 0..nsamples {
-                    let i = i_min + rng.gen::<f64>() * i_step;
-                    let j = j_min + rng.gen::<f64>() * j_step;
+                    for _ in 0..nsamples {
+                        let i = i_min + rng.gen::<f64>() * i_step;
+                        let j = j_min + rng.gen::<f64>() * j_step;
 
-                    let p = self.cast_ray_from_eye(scene, i, 1_f64 - j);
-                    r += p.x;
-                    g += p.y;
-                    b += p.z;
+                        let p = self.cast_ray_from_eye(scene, i, 1_f64 - j);
+                        r += p.x;
+                        g += p.y;
+                        b += p.z;
+                    }
+
+                    r /= nsamples as f64;
+                    g /= nsamples as f64;
+                    b /= nsamples as f64;
+                    **pixel = Vec3::new(r, g, b).into();
+                    worked = true;
+                } else {
+                    worked = false;
                 }
-
-                r /= nsamples as f64;
-                g /= nsamples as f64;
-                b /= nsamples as f64;
-                **pixel = Vec3::new(r, g, b).into();
+                let nb_pix_worked;
+                if worked {
+                    nb_pix_worked = nb_pix_this_session.fetch_add(1 as usize, Ordering::SeqCst);
+                } else {
+                    let w = nb_pix_this_session.load(Ordering::SeqCst);
+                    if w == 0 {
+                        nb_pix_worked = 1;
+                    } else {
+                        nb_pix_worked = w;
+                    }
+                }
                 let nb_rays = nb_rays.fetch_add(nsamples as usize, Ordering::SeqCst);
+
                 let now: DateTime<Local> = Local::now();
                 let duration = now.signed_duration_since(start);
                 let d_ms = duration.num_milliseconds();
-                let end_ms = d_ms * (max_rays as i64) / (nb_rays as i64);
+                let end_ms = d_ms * (nb_pix_to_see as i64) / (nb_pix_worked as i64);
                 let end_d = chrono::Duration::milliseconds(end_ms);
                 let end = start.checked_add_signed(end_d).unwrap();
 
@@ -238,8 +257,7 @@ impl RayCtx {
                     100_u64 * (nb_rays as u64) / (max_rays as u64),
                     end.to_rfc2822()
                 );
-            },
-        );
+            });
 
         buf.save(pngpath).ok();
     }

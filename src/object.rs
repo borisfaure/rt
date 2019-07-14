@@ -119,19 +119,19 @@ pub struct Ellipsoid {
     sphere: Sphere,
 }
 impl Ellipsoid {
-//    pub fn new(center: Vec3, radii: Vec3, color: Rgb<u8>) -> Ellipsoid {
-//        let center = center;
-//        let translation = center.opposite();
-//        let inv_radii = radii.invert();
-//        let s = Sphere::new(Vec3::origin(), 1., color);
-//        Ellipsoid {
-//            center: center,
-//            translation: translation,
-//            radii: radii,
-//            inv_radii: inv_radii,
-//            sphere: s,
-//        }
-//    }
+    //    pub fn new(center: Vec3, radii: Vec3, color: Rgb<u8>) -> Ellipsoid {
+    //        let center = center;
+    //        let translation = center.opposite();
+    //        let inv_radii = radii.invert();
+    //        let s = Sphere::new(Vec3::origin(), 1., color);
+    //        Ellipsoid {
+    //            center: center,
+    //            translation: translation,
+    //            radii: radii,
+    //            inv_radii: inv_radii,
+    //            sphere: s,
+    //        }
+    //    }
 }
 
 impl ObjectTrait for Ellipsoid {

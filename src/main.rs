@@ -15,7 +15,7 @@ extern crate serde;
 extern crate serde_json;
 
 use clap::{App, Arg, SubCommand};
-use image::{Rgb};
+use image::Rgb;
 use regex::Regex;
 
 mod maths;
