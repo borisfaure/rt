@@ -7,7 +7,7 @@ use image::{Rgb, Rgba, RgbaImage};
 use rand::Rng;
 use rayon::prelude::*;
 use std::f64;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 
 pub static DEPTH_MAX: u8 = 8;
@@ -186,18 +186,26 @@ impl RayCtx {
             }
         }
         let max_rays = (self.screen.width as u64) * (self.screen.height as u64) * nsamples;
-        let nb_rays = Arc::new(AtomicUsize::new(1));
-        let nb_pix_this_session = Arc::new(AtomicUsize::new(1));
-        let nb_pix_to_see = self.screen.height * self.screen.width;
+        let nb_pix = Arc::new(AtomicUsize::new(0));
+        let nb_pix_worked = Arc::new(AtomicUsize::new(0));
+        let nb_pix_to_see : usize = (self.screen.height * self.screen.width) as usize;
         let start: DateTime<Local> = Local::now();
+
+        let stop = Arc::new(AtomicBool::new(false));
+        signal_hook::flag::register(signal_hook::SIGINT, Arc::clone(&stop)).ok();
+        signal_hook::flag::register(signal_hook::SIGTERM, Arc::clone(&stop)).ok();
 
         debug!("rendering scene");
         buf.enumerate_pixels_mut()
             .collect::<Vec<(u32, u32, &mut Rgba<u8>)>>()
             .par_iter_mut()
             .for_each(|(x, y, pixel)| {
+                let stop = stop.load(Ordering::SeqCst);
+                if stop {
+                    return;
+                }
                 let worked;
-                if **pixel != undone_color {
+                if **pixel == undone_color {
                     let i_min = *x as f64 / self.width;
                     let i_max = (*x + 1) as f64 / self.width;
                     let j_min = *y as f64 / self.height;
@@ -230,34 +238,41 @@ impl RayCtx {
                 } else {
                     worked = false;
                 }
-                let nb_pix_worked;
+                let pix_worked;
+                let nb_pix = nb_pix.fetch_add(1 as usize, Ordering::SeqCst);
                 if worked {
-                    nb_pix_worked = nb_pix_this_session.fetch_add(1 as usize, Ordering::SeqCst);
+                    pix_worked = nb_pix_worked.fetch_add(1 as usize, Ordering::SeqCst);
                 } else {
-                    let w = nb_pix_this_session.load(Ordering::SeqCst);
-                    if w == 0 {
-                        nb_pix_worked = 1;
-                    } else {
-                        nb_pix_worked = w;
-                    }
+                    pix_worked = nb_pix_worked.load(Ordering::SeqCst);
                 }
-                let nb_rays = nb_rays.fetch_add(nsamples as usize, Ordering::SeqCst);
+                let skipped;
+                if pix_worked > 0 {
+                    skipped = nb_pix - pix_worked;
+                } else {
+                    skipped = 0_usize;
+                }
 
                 let now: DateTime<Local> = Local::now();
                 let duration = now.signed_duration_since(start);
                 let d_ms = duration.num_milliseconds();
-                let end_ms = d_ms * (nb_pix_to_see as i64) / (nb_pix_worked as i64);
+                let end_ms;
+                if pix_worked > 0 {
+                    end_ms = d_ms * ((nb_pix_to_see - skipped) as i64) / (pix_worked as i64);
+                } else {
+                    end_ms = d_ms * ((nb_pix_to_see - skipped) as i64);
+                }
                 let end_d = chrono::Duration::milliseconds(end_ms);
                 let end = start.checked_add_signed(end_d).unwrap();
 
                 print!(
                     "\r> {:>12} / {:} ({:3}%) end at {:?}",
-                    nb_rays,
+                    nb_pix * nsamples as usize,
                     max_rays,
-                    100_u64 * (nb_rays as u64) / (max_rays as u64),
-                    end.to_rfc2822()
+                    100_u64 * (nb_pix as u64) / (nb_pix_to_see as u64),
+                    end.to_rfc2822(),
                 );
-            });
+            }
+        );
 
         buf.save(pngpath).ok();
     }

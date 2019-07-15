@@ -13,6 +13,7 @@ extern crate regex;
 extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;
+extern crate signal_hook;
 
 use clap::{App, Arg, SubCommand};
 use image::Rgb;
