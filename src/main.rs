@@ -14,6 +14,8 @@ extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;
 extern crate signal_hook;
+#[macro_use]
+extern crate debug_macros;
 
 use clap::{App, Arg, SubCommand};
 use image::Rgb;

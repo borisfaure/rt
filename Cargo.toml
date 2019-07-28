@@ -6,6 +6,7 @@ license = "BSD-2-Clause"
 edition = "2018"
 
 [dependencies]
+debug_macros = "*"
 image = "*"
 log = "*"
 clap = "*"
