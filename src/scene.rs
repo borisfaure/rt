@@ -143,8 +143,8 @@ impl Scene {
         add_point(1., 0.);
         add_point(1., 2.);
         add_point(1., 4.);
-        add_point(2., 1.);
-        add_point(2., 3.);
+        add_point(1.8, 1.);
+        add_point(1.8, 3.);
         /* . */
         add_point(4., 0.);
         /* F */
@@ -187,7 +187,7 @@ impl Scene {
         add_point(18., 4.);
         add_point(19., 2.);
         add_point(19., 4.);
-        add_point(20., 0.);
+        add_point(19.8, 0.);
         add_point(20., 1.);
         add_point(20., 3.);
         /* E */
