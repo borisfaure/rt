@@ -1,13 +1,14 @@
 use crate::maths::Vec3;
-use crate::object::{BaseObject, Conifer, Sphere};
-use crate::raytracer::{Footprint, RayCtx};
-use image::Rgb;
+use crate::object::{BaseObject, Conifer, ObjectTrait, Sphere};
+use crate::raytracer::{Footprint, Ray, RayCtx};
+use image::{Rgb, RgbImage};
 use rand::Rng;
 use std::error::Error;
 use std::f64::{self, consts::PI};
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
+use rayon::prelude::*;
 
 #[derive(Serialize, Deserialize)]
 pub struct Scene {
@@ -100,6 +101,124 @@ impl Scene {
             let display = json_file_path.display();
             panic!("couldn't create {}: {}", display, why.description())
         }
+    }
+
+    pub fn generate_from_image(&mut self, ray_ctx: &RayCtx, buf: RgbImage, nb_vert_spheres: f64) -> usize {
+        let black = Rgb([0, 0, 0]);
+        let mut nb_spheres: usize = 0;
+        let mid_screen_height = ray_ctx
+            .p_bottom_right
+            .length_sq_to(&ray_ctx.p_top_right)
+            .sqrt() / 2.;
+        let nb_vert_spheres = if nb_vert_spheres > mid_screen_height {
+            nb_vert_spheres
+        } else {
+            mid_screen_height.ceil()
+        };
+        let radius = (2. * mid_screen_height) / (nb_vert_spheres - mid_screen_height);
+        let diameter = 2. * radius;
+        let f = 2. + radius;
+        let c = ray_ctx.eye.origin.translate(&ray_ctx.eye.direction, f);
+
+        let bottom_left = Vec3::new(
+            c.x - f * ray_ctx.b.x - f * ray_ctx.v.x / ray_ctx.aspect_ratio,
+            c.y - f * ray_ctx.b.y - f * ray_ctx.v.y / ray_ctx.aspect_ratio,
+            c.z - f * ray_ctx.b.z - f * ray_ctx.v.z / ray_ctx.aspect_ratio,
+        );
+        let top_left = Vec3::new(
+            c.x - f * ray_ctx.b.x + f * ray_ctx.v.x / ray_ctx.aspect_ratio,
+            c.y - f * ray_ctx.b.y + f * ray_ctx.v.y / ray_ctx.aspect_ratio,
+            c.z - f * ray_ctx.b.z + f * ray_ctx.v.z / ray_ctx.aspect_ratio,
+        );
+        let bottom_right = Vec3::new(
+            c.x + f * ray_ctx.b.x - f * ray_ctx.v.x / ray_ctx.aspect_ratio,
+            c.y + f * ray_ctx.b.y - f * ray_ctx.v.y / ray_ctx.aspect_ratio,
+            c.z + f * ray_ctx.b.z - f * ray_ctx.v.z / ray_ctx.aspect_ratio,
+        );
+        let spheres_height = bottom_left.length_sq_to(&top_left).sqrt();
+        let spheres_width = bottom_left.length_sq_to(&bottom_right).sqrt();
+
+        let get_color_avg = |s: &Sphere, x: u32, y: u32| -> (Rgb<u8>, u64) {
+            if x >= buf.width() || y >= buf.height() {
+                return (black.clone(), 0);
+            }
+            let p = buf.get_pixel(x, buf.height() - 1 - y);
+            let mut avg = 0;
+            let t = |di, dj| {
+                let i = ((x as f64) + di) / (buf.width() as f64);
+                let j = ((y as f64) + dj) / (buf.height() as f64);
+                let r = Ray::new(ray_ctx, i, j);
+                let h = s.hits(&r, 0_f64, f64::INFINITY);
+                if let Some(_) = h {
+                    1
+                } else {
+                    0
+                }
+            };
+            avg += t(0.25, 0.25);
+            avg += t(0.25, 0.75);
+            avg += t(0.75, 0.25);
+            avg += t(0.75, 0.75);
+            (p.clone(), avg)
+        };
+        let get_color = |s: &Sphere| -> Rgb<u8> {
+            let ((x0, y0), (x1, y1)) = ray_ctx.get_screenprint(&s);
+
+            let mut vec: Vec<(Rgb<u8>, u64)> = Vec::new();
+            for y in y0..y1 {
+                for x in x0..x1 {
+                    let (p, w) = get_color_avg(s, x, y);
+                    if w > 0 {
+                        vec.push((p, w));
+                    }
+                }
+            }
+            let mut w = 0_u64;
+            let mut r = 0_u64;
+            let mut g = 0_u64;
+            let mut b = 0_u64;
+
+            for (c, avg) in vec {
+                r += (c[0] as u64) * avg;
+                g += (c[1] as u64) * avg;
+                b += (c[2] as u64) * avg;
+                w += avg;
+            }
+            if w > 0 {
+                Rgb([(r / w) as u8, (g / w) as u8, (b / w) as u8])
+            } else {
+                black.clone()
+            }
+        };
+
+        /* front */
+        let add_point_front = |x: f64, y: f64| {
+            let v = Vec3::new(
+                top_left.x + x * diameter * ray_ctx.b.x - y * diameter * ray_ctx.v.x,
+                top_left.y + x * diameter * ray_ctx.b.y - y * diameter * ray_ctx.v.y,
+                top_left.z + x * diameter * ray_ctx.b.z - y * diameter * ray_ctx.v.z,
+            );
+            let s = Sphere::new(v.clone(), radius, black.clone());
+            let color = get_color(&s);
+            Sphere::new(v, radius, color.clone())
+        };
+        {
+            let y_max = (((spheres_height / diameter).ceil()) as u64) + 1;
+            let x_max = (((spheres_width / diameter).ceil()) as u64) + 1;
+            let n = y_max * x_max;
+            let spheres : Vec<Sphere> = (0..n).into_par_iter().map(|i| {
+                let y = i / x_max;
+                let x = i % x_max;
+                add_point_front(x as f64, y as f64)
+            }).collect();
+            for s in spheres {
+                self.add(BaseObject::Sphere(s));
+                nb_spheres += 1;
+            }
+
+        }
+
+        return nb_spheres;
     }
 
     pub fn add_signature(&mut self, ray_ctx: &RayCtx) {

@@ -51,10 +51,10 @@ impl ObjectTrait for Plan {
 /* {{{ Sphere */
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Sphere {
-    center: Vec3,
-    radius: f64,
-    rd_sq: f64,
-    color: Vec3,
+    pub center: Vec3,
+    pub radius: f64,
+    pub rd_sq: f64,
+    pub color: Vec3,
 }
 impl Sphere {
     pub fn new(center: Vec3, radius: f64, color: Rgb<u8>) -> Sphere {

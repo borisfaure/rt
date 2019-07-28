@@ -1,5 +1,5 @@
 use crate::maths::{Vec3, EPSILON};
-use crate::object::{ObjectTrait, Plan};
+use crate::object::{ObjectTrait, Plan, Sphere};
 use crate::scene::Scene;
 use chrono::{DateTime, Local};
 use color_scaling::scale_rgb;
@@ -70,6 +70,7 @@ impl Footprint {
     }
 }
 
+#[derive(Debug)]
 pub struct RayCtx {
     pub aspect_ratio: f64,
     pub eye: Eye,
@@ -86,21 +87,20 @@ pub struct RayCtx {
     pub height: f64,
     pub hx: Vec3,
     pub hy: Vec3,
+    pub hx_len: f64,
+    pub hy_len: f64,
 }
 impl RayCtx {
     pub fn new(eye: &Eye, screen: &Screen) -> RayCtx {
         let w = Vec3::new_normalized(0., 1., 0.);
         let b = w.cross_product(&eye.direction).normalize(); // →
         let v = eye.direction.cross_product(&b).normalize(); // ↑
-        debug!("b:{:?} v:{:?}", b, v);
         let d = 1.;
         let c = eye.origin.translate(&eye.direction, d);
         // Obtain the image's width and height.
         let width = screen.width as f64;
         let height = screen.height as f64;
         let aspect_ratio = width / height;
-        debug!("eye:{:?} direction:{:?}", eye.origin, eye.direction);
-        debug!("c:{:?}", c);
 
         /* Use 90° as horizontal field of view
          * Tan(π/4) = 1
@@ -126,14 +126,16 @@ impl RayCtx {
             c.y + b.y - v.y / aspect_ratio,
             c.z + b.z - v.z / aspect_ratio,
         );
-        debug!(
+        info!(
             "top_left:{:?} top_right:{:?} bottom_left:{:?} bottom_right:{:?}",
             p_top_left, p_top_right, p_bottom_left, p_bottom_right
         );
         let hx = p_top_left.to(&p_top_right);
         let hy = p_bottom_left.to(&p_top_left);
 
-        debug!("hx:{:?}, hy:{:?}", hx, hy);
+        info!("hx:{:?}, hy:{:?}", hx, hy);
+        let hx_len = hx.length_sq().sqrt();
+        let hy_len = hy.length_sq().sqrt();
 
         RayCtx {
             aspect_ratio: aspect_ratio,
@@ -151,7 +153,62 @@ impl RayCtx {
             height: height,
             hx: hx,
             hy: hy,
+            hx_len: hx_len,
+            hy_len: hy_len,
         }
+    }
+    pub fn get_screenprint(&self, s: &Sphere) -> ((u32, u32), (u32, u32)) {
+        let eye_to_s = self.eye.origin.to(&s.center);
+        let t = eye_to_s.dot_product(&self.eye.direction);
+        if t <= 0. {
+            return ((0, 0), (0, 0));
+        }
+        let d_to_s = eye_to_s.length_sq().sqrt();
+        let ts = d_to_s / t;
+        /* 1st step, find center on screen */
+        let c = eye_to_s.normalize().at(&self.eye.origin, ts);
+        let bl_to_c = self.p_bottom_left.to(&c);
+        let ci = self.b.dot_product(&bl_to_c) / self.hx_len;
+        let cj = self.v.dot_product(&bl_to_c) / self.hy_len;
+        let r = s.radius / t;
+
+        let x0f = ((ci - r) * (self.width as f64)).trunc();
+        let x0 = if x0f < 0. {
+            0
+        } else if x0f >= self.width {
+            self.width as u32 - 1
+        } else {
+            x0f as u32
+        };
+
+        let y0f = ((cj - r) * (self.height as f64)).trunc();
+        let y0 = if y0f < 0. {
+            0
+        } else if y0f >= self.height {
+            self.height as u32 - 1
+        } else {
+            y0f as u32
+        };
+
+        let x1f = ((ci + r) * (self.width as f64)).ceil();
+        let x1 = if x1f < 0. {
+            0
+        } else if x1f > self.width {
+            self.width as u32
+        } else {
+            x1f as u32
+        };
+
+        let y1f = ((cj + r) * (self.height as f64)).ceil();
+        let y1 = if y1f <= 0. {
+            0
+        } else if y1f > self.height {
+            self.height as u32
+        } else {
+            y1f as u32
+        };
+
+        ((x0, y0), (x1, y1))
     }
 
     pub fn get_footprint(&self, floor: &Plan) -> Footprint {
@@ -188,14 +245,14 @@ impl RayCtx {
         let max_rays = (self.screen.width as u64) * (self.screen.height as u64) * nsamples;
         let nb_pix = Arc::new(AtomicUsize::new(0));
         let nb_pix_worked = Arc::new(AtomicUsize::new(0));
-        let nb_pix_to_see : usize = (self.screen.height * self.screen.width) as usize;
+        let nb_pix_to_see: usize = (self.screen.height * self.screen.width) as usize;
         let start: DateTime<Local> = Local::now();
 
         let stop = Arc::new(AtomicBool::new(false));
         signal_hook::flag::register(signal_hook::SIGINT, Arc::clone(&stop)).ok();
         signal_hook::flag::register(signal_hook::SIGTERM, Arc::clone(&stop)).ok();
 
-        debug!("rendering scene");
+        dbg!("rendering scene");
         buf.enumerate_pixels_mut()
             .collect::<Vec<(u32, u32, &mut Rgba<u8>)>>()
             .par_iter_mut()
@@ -246,7 +303,7 @@ impl RayCtx {
                     pix_worked = nb_pix_worked.load(Ordering::SeqCst);
                 }
                 let skipped;
-                if pix_worked > 0 {
+                if pix_worked > 0 && nb_pix > pix_worked {
                     skipped = nb_pix - pix_worked;
                 } else {
                     skipped = 0_usize;
@@ -271,22 +328,20 @@ impl RayCtx {
                     100_u64 * (nb_pix as u64) / (nb_pix_to_see as u64),
                     end.to_rfc2822(),
                 );
-            }
-        );
+            });
 
         buf.save(pngpath).ok();
     }
 
     fn cast_ray_from_eye(&self, scene: &Scene, i: f64, j: f64) -> Vec3 {
         let r = Ray::new(&self, i, j);
-        debug!("({:?},{:?}) r:{:?}", i, j, r);
         color(&r, scene, 0)
     }
 }
 
 impl Ray {
     /* i, j in [0,1], in usual direction (origin is bottom left) */
-    fn new(ctx: &RayCtx, i: f64, j: f64) -> Ray {
+    pub fn new(ctx: &RayCtx, i: f64, j: f64) -> Ray {
         /* Origin is the eye */
         let screen_point = Vec3::new(
             ctx.p_bottom_left.x + i * ctx.hx.x + j * ctx.hy.x,
@@ -352,8 +407,8 @@ fn color(ray: &Ray, scene: &Scene, depth: u8) -> Vec3 {
         //assert!(ud.y <= 1_f64);
         scale_rgb(&c2, &c1, f64::abs(ud.y)).unwrap().into()
     } else {
-        let with_lambertian = true;
-        let with_shadows = true;
+        let with_lambertian = false;
+        let with_shadows = false;
         let mut c: Vec3;
         if with_lambertian {
             if depth > DEPTH_MAX {

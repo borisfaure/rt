@@ -143,6 +143,54 @@ fn main() {
                 ),
         )
         .subcommand(
+            SubCommand::with_name("extract")
+                .about("construct a json file of from a picture")
+                .arg(
+                    Arg::with_name("CFG")
+                        .help("config file")
+                        .required(true)
+                        .index(1),
+                )
+                .arg(
+                    Arg::with_name("PNG")
+                        .help("png file to extract from")
+                        .required(true)
+                        .index(2),
+                )
+                .arg(
+                    Arg::with_name("vertical_spheres")
+                        .short("n")
+                        .long("vertical-spheres")
+                        .takes_value(true)
+                        .default_value("5.")
+                        .help("Heigth represents that many spheres"),
+                )
+                .arg(
+                    Arg::with_name("eye_position")
+                        .short("e")
+                        .long("eye-position")
+                        .default_value("(0., 0., -25.)")
+                        .validator(is_vec3)
+                        .help("position of the eye in the scene"),
+                )
+                .arg(
+                    Arg::with_name("eye_direction")
+                        .short("i")
+                        .long("eye-direction")
+                        .default_value("(0., 0., 1.)")
+                        .validator(is_vec3)
+                        .help("direction of the eye in the scene"),
+                )
+                .arg(
+                    Arg::with_name("floor")
+                        .short("f")
+                        .long("floor")
+                        .default_value("(0.0, 1.0, 0.0)")
+                        .validator(is_vec3)
+                        .help("normal direction of the floor in the scene"),
+                ),
+        )
+        .subcommand(
             SubCommand::with_name("render")
                 .about("renders a scene")
                 .arg(
@@ -169,7 +217,7 @@ fn main() {
                     Arg::with_name("eye_position")
                         .short("e")
                         .long("eye-position")
-                        .default_value("(0., 25., 0.)")
+                        .default_value("(0., 0., -25.)")
                         .validator(is_vec3)
                         .help("position of the eye in the scene"),
                 )
@@ -177,7 +225,7 @@ fn main() {
                     Arg::with_name("eye_direction")
                         .short("i")
                         .long("eye-direction")
-                        .default_value("(0., -1.0, 1.)")
+                        .default_value("(0., 0., 1.)")
                         .validator(is_vec3)
                         .help("direction of the eye in the scene"),
                 )
@@ -229,6 +277,40 @@ fn main() {
         let trees = scene.generate_forest_monte_carlo(&footprint, density);
         info!("trees:{:?}", trees);
         scene.add_signature(&ray_ctx);
+
+        scene.save(Path::new(cfgpath));
+    } else if let Some(m) = m.subcommand_matches("extract") {
+        let pngpath = m.value_of("PNG").unwrap();
+        let cfgpath = m.value_of("CFG").unwrap();
+        let nb_vert_spheres = value_t!(m, "vertical_spheres", f64).unwrap();
+        let eye_pos = parse_vec3(m.value_of("eye_position").unwrap()).unwrap();
+        let eye_dir = parse_vec3(m.value_of("eye_direction").unwrap()).unwrap();
+        let floor_dir = parse_vec3(m.value_of("floor").unwrap()).unwrap();
+        let mut scene = Scene::new();
+
+        let img = image::open(pngpath).unwrap();
+        let buf = img.to_rgb();
+
+        let preset = Preset {
+            eye: Eye {
+                origin: eye_pos,
+                direction: eye_dir,
+            },
+            nb_samples: 8_u64,
+            screen: Screen {
+                width: buf.width(),
+                height: buf.height(),
+            },
+        };
+
+        let ray_ctx = RayCtx::new(&preset.eye, &preset.screen);
+        dbg!("rayctx:{:?}", ray_ctx);
+
+        let floor = Plan::new(Vec3::origin(), floor_dir, Rgb([237, 201, 175]));
+        scene.add(BaseObject::Plan(floor));
+        let spheres = scene.generate_from_image(&ray_ctx, buf, nb_vert_spheres);
+        info!("spheres:{:?}", spheres);
+        //scene.add_signature(&ray_ctx);
 
         scene.save(Path::new(cfgpath));
     } else if let Some(m) = m.subcommand_matches("render") {
