@@ -7,6 +7,7 @@ use image::{Rgb, Rgba, RgbaImage};
 use rand::Rng;
 use rayon::prelude::*;
 use std::f64;
+use std::f64::consts::PI;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 
@@ -95,6 +96,10 @@ impl RayCtx {
         let w = Vec3::new_normalized(0., 1., 0.);
         let b = w.cross_product(&eye.direction).normalize(); // →
         let v = eye.direction.cross_product(&b).normalize(); // ↑
+        info!(
+            "w:{:?} b:{:?} v:{:?} eye:{:?}",
+            w, b, v, eye,
+        );
         let d = 1.;
         let c = eye.origin.translate(&eye.direction, d);
         // Obtain the image's width and height.
@@ -137,7 +142,7 @@ impl RayCtx {
         let hx_len = hx.length_sq().sqrt();
         let hy_len = hy.length_sq().sqrt();
 
-        RayCtx {
+        let r = RayCtx {
             aspect_ratio: aspect_ratio,
             eye: (*eye).clone(),
             screen: (*screen).clone(),
@@ -155,8 +160,42 @@ impl RayCtx {
             hy: hy,
             hx_len: hx_len,
             hy_len: hy_len,
-        }
+        };
+        info!(
+            "top_left:{:?} top_right:{:?} bottom_left:{:?} bottom_right:{:?}",
+            r.ij_to_screen(0., 0.),
+            r.ij_to_screen(1., 0.),
+            r.ij_to_screen(0., 1.),
+            r.ij_to_screen(1., 1.),
+        );
+        r
     }
+
+    pub fn ij_to_screen(&self, i: f64, j: f64) -> Vec3 {
+        let i = i - 0.5;
+        let j = j - 0.5;
+        /* Vertical fov is π/2 */
+        let vangle = PI / 4. * j;
+        let vsin = vangle.sin();
+        let vcos = vangle.cos();
+        let hangle = PI / 4. * i * self.aspect_ratio;
+        let hsin = hangle.sin();
+        let hcos = hangle.cos();
+
+        let v = Vec3::new_normalized(
+            vsin * self.v.x + vcos * self.eye.direction.x,
+            vsin * self.v.y + vcos * self.eye.direction.y,
+            vsin * self.v.z + vcos * self.eye.direction.z,
+        );
+        let h = Vec3::new_normalized(
+            hsin * self.b.x + hcos * self.eye.direction.x,
+            hsin * self.b.y + hcos * self.eye.direction.y,
+            hsin * self.b.z + hcos * self.eye.direction.z,
+        );
+        let dir = v.addv(&h).normalize();
+        self.eye.origin.addv(&dir)
+    }
+
     pub fn get_screenprint(&self, s: &Sphere) -> ((u32, u32), (u32, u32)) {
         let eye_to_s = self.eye.origin.to(&s.center);
         let t = eye_to_s.dot_product(&self.eye.direction);
@@ -343,12 +382,7 @@ impl Ray {
     /* i, j in [0,1], in usual direction (origin is bottom left) */
     pub fn new(ctx: &RayCtx, i: f64, j: f64) -> Ray {
         /* Origin is the eye */
-        let screen_point = Vec3::new(
-            ctx.p_bottom_left.x + i * ctx.hx.x + j * ctx.hy.x,
-            ctx.p_bottom_left.y + i * ctx.hx.y + j * ctx.hy.y,
-            ctx.p_bottom_left.z + i * ctx.hx.z + j * ctx.hy.z,
-        );
-
+        let screen_point = ctx.ij_to_screen(i, j);
         let d = ctx.eye.origin.to(&screen_point).normalize();
         let r = Ray {
             origin: ctx.eye.origin.clone(),
