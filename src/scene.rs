@@ -108,7 +108,11 @@ impl Scene {
         let mut nb_spheres: usize = 0;
         let radius = 2. * PI / (4. * nb_vert_spheres * ray_ctx.aspect_ratio - PI);
         let f = 2. + radius;
-        info!("radius:{:?}", radius);
+        info!("radius:{:?} f:{:?}", radius, f);
+        let nb_horiz_spheres = (nb_vert_spheres * ray_ctx.aspect_ratio).ceil();
+        let nb_vert_spheres = nb_vert_spheres + 1.;
+        info!("nb_horiz_spheres:{:?} nb_vert_spheres:{:?}",
+              nb_horiz_spheres, nb_vert_spheres);
 
         let get_color_avg = |s: &Sphere, x: u32, y: u32| -> (Rgb<u8>, u64) {
             if x >= buf.width() || y >= buf.height() {
@@ -133,8 +137,51 @@ impl Scene {
             avg += t(0.75, 0.75);
             (p.clone(), avg)
         };
-        let get_color = |s: &Sphere| -> Rgb<u8> {
-            let ((x0, y0), (x1, y1)) = ray_ctx.get_screenprint(&s);
+        let get_screenprint = |ci: f64, cj: f64| -> ((u32, u32), (u32, u32)) {
+            let rj = 1. / nb_vert_spheres / 2.;
+            let ri = 1. / nb_horiz_spheres / 2.;
+
+            let x0f = ((ci - ri) * (ray_ctx.width as f64)).trunc();
+            let x0 = if x0f < 0. {
+                0
+            } else if x0f >= ray_ctx.width {
+                ray_ctx.width as u32 - 1
+            } else {
+                x0f as u32
+            };
+
+            let y0f = ((cj - rj) * (ray_ctx.height as f64)).trunc();
+            let y0 = if y0f < 0. {
+                0
+            } else if y0f >= ray_ctx.height {
+                ray_ctx.height as u32 - 1
+            } else {
+                y0f as u32
+            };
+
+            let x1f = ((ci + ri) * (ray_ctx.width as f64)).ceil();
+            let x1 = if x1f < 0. {
+                0
+            } else if x1f > ray_ctx.width {
+                ray_ctx.width as u32
+            } else {
+                x1f as u32
+            };
+
+            let y1f = ((cj + rj) * (ray_ctx.height as f64)).ceil();
+            let y1 = if y1f <= 0. {
+                0
+            } else if y1f > ray_ctx.height {
+                ray_ctx.height as u32
+            } else {
+                y1f as u32
+            };
+
+            ((x0, y0), (x1, y1))
+        };
+
+        let get_color = |s: &Sphere, i: f64, j: f64| -> Rgb<u8> {
+            let ((x0, y0), (x1, y1)) = get_screenprint(i, j);
 
             let mut vec: Vec<(Rgb<u8>, u64)> = Vec::new();
             for y in y0..y1 {
@@ -166,14 +213,11 @@ impl Scene {
 
         /* front */
         let add_point_front = |i: f64, j: f64| {
-            info!("i,j:{:?}", (i,j));
-            let i = i - 0.5;
-            let j = j - 0.5;
             /* Vertical fov is π/2 */
-            let vangle = PI / 2. * j / ray_ctx.aspect_ratio;
+            let vangle = PI / 2. * (j - 0.5) / ray_ctx.aspect_ratio;
             let vsin = vangle.sin();
             let vcos = vangle.cos();
-            let hangle = PI / 2. * i;
+            let hangle = PI / 2. * (i - 0.5);
             let hsin = hangle.sin();
             let hcos = hangle.cos();
 
@@ -189,18 +233,12 @@ impl Scene {
                 );
             let dir = v.addv(&h).subv(&ray_ctx.eye.direction).normalize();
             let c = dir.at(&ray_ctx.eye.origin, f);
-            info!("c:{:?}, radius:{:?}",c, radius);
             let s = Sphere::new(c.clone(), radius, black.clone());
-            let color = get_color(&s);
-            info!("color:{:?}", color);
+            let color = get_color(&s, i, j);
             Sphere::new(c, radius, color.clone())
         };
         {
-            let nb_horiz_spheres = (nb_vert_spheres * ray_ctx.aspect_ratio).ceil();
-            let nb_vert_spheres = nb_vert_spheres + 1.;
             let n = (nb_horiz_spheres * nb_vert_spheres) as u32;
-            info!("nb_horiz_spheres:{:?} nb_vert_spheres:{:?}",
-                  nb_horiz_spheres, nb_vert_spheres);
             //let spheres : Vec<Sphere> = (0..n).into_par_iter().map(|idx| {
             let spheres : Vec<Sphere> = (0..n).map(|idx| {
                 let j = idx / (nb_horiz_spheres as u32);

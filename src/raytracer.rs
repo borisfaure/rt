@@ -149,57 +149,6 @@ impl RayCtx {
         self.eye.origin.addv(&dir)
     }
 
-    pub fn get_screenprint(&self, s: &Sphere) -> ((u32, u32), (u32, u32)) {
-        let eye_to_s = self.eye.origin.to(&s.center);
-        let t = eye_to_s.dot_product(&self.eye.direction);
-        if t <= 0. {
-            return ((0, 0), (0, 0));
-        }
-        let f = eye_to_s.length_sq().sqrt();
-
-        let ci = eye_to_s.dot_product(&self.b) / f;
-        let cj = eye_to_s.dot_product(&self.v) / f;
-        let r = s.radius / f;
-
-        let x0f = ((ci - r) * (self.width as f64)).trunc();
-        let x0 = if x0f < 0. {
-            0
-        } else if x0f >= self.width {
-            self.width as u32 - 1
-        } else {
-            x0f as u32
-        };
-
-        let y0f = ((cj - r) * (self.height as f64)).trunc();
-        let y0 = if y0f < 0. {
-            0
-        } else if y0f >= self.height {
-            self.height as u32 - 1
-        } else {
-            y0f as u32
-        };
-
-        let x1f = ((ci + r) * (self.width as f64)).ceil();
-        let x1 = if x1f < 0. {
-            0
-        } else if x1f > self.width {
-            self.width as u32
-        } else {
-            x1f as u32
-        };
-
-        let y1f = ((cj + r) * (self.height as f64)).ceil();
-        let y1 = if y1f <= 0. {
-            0
-        } else if y1f > self.height {
-            self.height as u32
-        } else {
-            y1f as u32
-        };
-
-        ((x0, y0), (x1, y1))
-    }
-
     pub fn get_footprint(&self, floor: &Plan) -> Footprint {
         let ft = |i, j| {
             let r = Ray::new(&self, i, j);
@@ -392,7 +341,7 @@ fn color(ray: &Ray, scene: &Scene, depth: u8) -> Vec3 {
         scale_rgb(&c2, &c1, f64::abs(ud.y)).unwrap().into()
     } else {
         let with_lambertian = false;
-        let with_shadows = false;
+        let with_shadows = true;
         let mut c: Vec3;
         if with_lambertian {
             if depth > DEPTH_MAX {

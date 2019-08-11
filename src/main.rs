@@ -188,6 +188,16 @@ fn main() {
                         .default_value("(0.0, 1.0, 0.0)")
                         .validator(is_vec3)
                         .help("normal direction of the floor in the scene"),
+                )
+                .arg(
+                    Arg::with_name("golden_sun")
+                        .long("golden-sun")
+                        .help("add a golden sun"),
+                )
+                .arg(
+                    Arg::with_name("blue_sun")
+                        .long("blue-sun")
+                        .help("add a blue sun"),
                 ),
         )
         .subcommand(
@@ -302,6 +312,14 @@ fn main() {
                 height: buf.height(),
             },
         };
+
+        if m.is_present("golden_sun") {
+            /* golden hour */
+            scene.set_golden_sun();
+        }
+        if m.is_present("blue_sun") {
+            scene.set_blue_sun();
+        }
 
         let ray_ctx = RayCtx::new(&preset.eye, &preset.screen);
         dbg!("rayctx:{:?}", ray_ctx);
