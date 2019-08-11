@@ -80,16 +80,8 @@ pub struct RayCtx {
     pub b: Vec3,
     pub v: Vec3,
     pub c: Vec3,
-    pub p_top_left: Vec3,
-    pub p_top_right: Vec3,
-    pub p_bottom_left: Vec3,
-    pub p_bottom_right: Vec3,
     pub width: f64,
     pub height: f64,
-    pub hx: Vec3,
-    pub hy: Vec3,
-    pub hx_len: f64,
-    pub hy_len: f64,
 }
 impl RayCtx {
     pub fn new(eye: &Eye, screen: &Screen) -> RayCtx {
@@ -107,41 +99,6 @@ impl RayCtx {
         let height = screen.height as f64;
         let aspect_ratio = width / height;
 
-        /* Use 90° as horizontal field of view
-         * Tan(π/4) = 1
-         */
-
-        let p_top_left = Vec3::new(
-            c.x - b.x + v.x / aspect_ratio,
-            c.y - b.y + v.y / aspect_ratio,
-            c.z - b.z + v.z / aspect_ratio,
-        );
-        let p_top_right = Vec3::new(
-            c.x + b.x + v.x / aspect_ratio,
-            c.y + b.y + v.y / aspect_ratio,
-            c.z + b.z + v.z / aspect_ratio,
-        );
-        let p_bottom_left = Vec3::new(
-            c.x - b.x - v.x / aspect_ratio,
-            c.y - b.y - v.y / aspect_ratio,
-            c.z - b.z - v.z / aspect_ratio,
-        );
-        let p_bottom_right = Vec3::new(
-            c.x + b.x - v.x / aspect_ratio,
-            c.y + b.y - v.y / aspect_ratio,
-            c.z + b.z - v.z / aspect_ratio,
-        );
-        info!(
-            "top_left:{:?} top_right:{:?} bottom_left:{:?} bottom_right:{:?}",
-            p_top_left, p_top_right, p_bottom_left, p_bottom_right
-        );
-        let hx = p_top_left.to(&p_top_right);
-        let hy = p_bottom_left.to(&p_top_left);
-
-        info!("hx:{:?}, hy:{:?}", hx, hy);
-        let hx_len = hx.length_sq().sqrt();
-        let hy_len = hy.length_sq().sqrt();
-
         let r = RayCtx {
             aspect_ratio: aspect_ratio,
             eye: (*eye).clone(),
@@ -150,35 +107,30 @@ impl RayCtx {
             b: b,
             v: v,
             c: c,
-            p_top_left: p_top_left,
-            p_top_right: p_top_right,
-            p_bottom_right: p_bottom_right,
-            p_bottom_left: p_bottom_left,
             width: width,
             height: height,
-            hx: hx,
-            hy: hy,
-            hx_len: hx_len,
-            hy_len: hy_len,
         };
-        info!(
-            "top_left:{:?} top_right:{:?} bottom_left:{:?} bottom_right:{:?}",
-            r.ij_to_screen(0., 0.),
-            r.ij_to_screen(1., 0.),
-            r.ij_to_screen(0., 1.),
-            r.ij_to_screen(1., 1.),
-        );
+        info!("TL:{:?} TR:{:?} BR:{:?} BL:{:?}",
+              r.ij_to_screen(0., 0.),
+              r.ij_to_screen(1., 0.),
+              r.ij_to_screen(1., 1.),
+              r.ij_to_screen(0., 1.),
+              );
+        info!("T:{:?} B:{:?}",
+              r.ij_to_screen(0.5, 0.),
+              r.ij_to_screen(0.5, 1.),
+              );
         r
     }
 
     pub fn ij_to_screen(&self, i: f64, j: f64) -> Vec3 {
         let i = i - 0.5;
         let j = j - 0.5;
-        /* Vertical fov is π/2 */
-        let vangle = PI / 4. * j;
+        /* Horizontal fov is π/2 */
+        let vangle = PI / 2. * j / self.aspect_ratio;
         let vsin = vangle.sin();
         let vcos = vangle.cos();
-        let hangle = PI / 4. * i * self.aspect_ratio;
+        let hangle = PI / 2. * i;
         let hsin = hangle.sin();
         let hcos = hangle.cos();
 
@@ -192,7 +144,8 @@ impl RayCtx {
             hsin * self.b.y + hcos * self.eye.direction.y,
             hsin * self.b.z + hcos * self.eye.direction.z,
         );
-        let dir = v.addv(&h).normalize();
+
+        let dir = v.addv(&h).subv(&self.eye.direction);
         self.eye.origin.addv(&dir)
     }
 
@@ -202,14 +155,11 @@ impl RayCtx {
         if t <= 0. {
             return ((0, 0), (0, 0));
         }
-        let d_to_s = eye_to_s.length_sq().sqrt();
-        let ts = d_to_s / t;
-        /* 1st step, find center on screen */
-        let c = eye_to_s.normalize().at(&self.eye.origin, ts);
-        let bl_to_c = self.p_bottom_left.to(&c);
-        let ci = self.b.dot_product(&bl_to_c) / self.hx_len;
-        let cj = self.v.dot_product(&bl_to_c) / self.hy_len;
-        let r = s.radius / t;
+        let f = eye_to_s.length_sq().sqrt();
+
+        let ci = eye_to_s.dot_product(&self.b) / f;
+        let cj = eye_to_s.dot_product(&self.v) / f;
+        let r = s.radius / f;
 
         let x0f = ((ci - r) * (self.width as f64)).trunc();
         let x0 = if x0f < 0. {
