@@ -125,7 +125,7 @@ impl Scene {
             let t = |di, dj| {
                 let i = ((x as f64) + di) / (buf.width() as f64);
                 let j = ((y as f64) + dj) / (buf.height() as f64);
-                let r = Ray::new(ray_ctx, i, j);
+                let r = Ray::new(ray_ctx, i, j, false);
                 let h = s.hits(&r, 0_f64, f64::INFINITY);
                 if let Some(_) = h {
                     1
@@ -290,7 +290,7 @@ impl Scene {
                 base.y + x * diameter * ray_ctx.b.y + y * diameter * ray_ctx.v.y,
                 base.z + x * diameter * ray_ctx.b.z + y * diameter * ray_ctx.v.z,
             );
-            let sphere = Sphere::new(v, radius, color.clone());
+            let sphere = Sphere::new(v, radius, color.clone(), false);
             self.add(BaseObject::Sphere(sphere));
         };
         /* B */

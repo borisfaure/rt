@@ -328,7 +328,7 @@ fn main() {
         scene.add(BaseObject::Plan(floor));
         let spheres = scene.generate_from_image(&ray_ctx, buf, nb_vert_spheres);
         info!("spheres:{:?}", spheres);
-        //scene.add_signature(&ray_ctx);
+        scene.add_signature(&ray_ctx);
 
         scene.save(Path::new(cfgpath));
     } else if let Some(m) = m.subcommand_matches("render") {

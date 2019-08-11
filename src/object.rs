@@ -55,20 +55,25 @@ pub struct Sphere {
     pub radius: f64,
     pub rd_sq: f64,
     pub color: Vec3,
+    pub shadows: bool,
 }
 impl Sphere {
-    pub fn new(center: Vec3, radius: f64, color: Rgb<u8>) -> Sphere {
+    pub fn new(center: Vec3, radius: f64, color: Rgb<u8>, shadows: bool) -> Sphere {
         Sphere {
             center: center,
             radius: radius,
             rd_sq: radius * radius,
             color: color.into(),
+            shadows: shadows,
         }
     }
 }
 
 impl ObjectTrait for Sphere {
     fn hits(&self, ray: &Ray, tmin: f64, tmax: f64) -> Option<Hit> {
+        if ray.is_light && !self.shadows {
+            return None;
+        }
         let oc = self.center.to(&ray.origin);
         let a = ray.direction.dot_product(&ray.direction);
         let b = oc.dot_product(&ray.direction);
@@ -139,6 +144,7 @@ impl ObjectTrait for Ellipsoid {
         let ray2 = Ray {
             origin: ray.origin.addv(&self.translation).multv(&self.inv_radii),
             direction: ray.direction.multv(&self.inv_radii),
+            is_light: ray.is_light,
         };
         let h = self.sphere.hits(&ray2, tmin, tmax);
         if let Some(hit) = h {
@@ -312,6 +318,7 @@ impl Conifer {
             Vec3::new(base.x, base.y + (top.y - base.y) / 3., base.z),
             (top.y - base.y) * 0.8,
             Rgb([0, 0, 0]),
+            false,
         );
         let height = top.y - base.y;
         Conifer {

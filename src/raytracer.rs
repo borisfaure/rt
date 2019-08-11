@@ -47,6 +47,7 @@ pub struct Screen {
 pub struct Ray {
     pub origin: Vec3,
     pub direction: Vec3,
+    pub is_light: bool,
 }
 #[derive(Debug, Clone)]
 pub struct Footprint {
@@ -151,7 +152,7 @@ impl RayCtx {
 
     pub fn get_footprint(&self, floor: &Plan) -> Footprint {
         let ft = |i, j| {
-            let r = Ray::new(&self, i, j);
+            let r = Ray::new(&self, i, j, false);
             let h = floor.hits(&r, 0_f64, f64::INFINITY);
             if let Some(hit) = h {
                 hit.p
@@ -272,20 +273,21 @@ impl RayCtx {
     }
 
     fn cast_ray_from_eye(&self, scene: &Scene, i: f64, j: f64) -> Vec3 {
-        let r = Ray::new(&self, i, j);
+        let r = Ray::new(&self, i, j, false);
         color(&r, scene, 0)
     }
 }
 
 impl Ray {
     /* i, j in [0,1], in usual direction (origin is bottom left) */
-    pub fn new(ctx: &RayCtx, i: f64, j: f64) -> Ray {
+    pub fn new(ctx: &RayCtx, i: f64, j: f64, is_light: bool) -> Ray {
         /* Origin is the eye */
         let screen_point = ctx.ij_to_screen(i, j);
         let d = ctx.eye.origin.to(&screen_point).normalize();
         let r = Ray {
             origin: ctx.eye.origin.clone(),
             direction: d,
+            is_light: is_light,
         };
         r
     }
@@ -300,6 +302,7 @@ fn lambertian(hit: &Hit, scene: &Scene, depth: u8) -> Vec3 {
     let lambertian = Ray {
         origin: hit.p.clone(),
         direction: u.addv(&hit.normal),
+        is_light: false,
     };
     let c = color(&lambertian, &scene, depth + 1);
     c.multv(&hit.color)
@@ -357,6 +360,7 @@ fn color(ray: &Ray, scene: &Scene, depth: u8) -> Vec3 {
                 let sun_ray = Ray {
                     origin: start,
                     direction: sun.clone(),
+                    is_light: true,
                 };
                 let sun_hit = hits(&sun_ray, scene);
                 if sun_hit.t == f64::INFINITY {
