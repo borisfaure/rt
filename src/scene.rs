@@ -113,6 +113,8 @@ impl Scene {
         let nb_vert_spheres = nb_vert_spheres + 1.;
         info!("nb_horiz_spheres:{:?} nb_vert_spheres:{:?}",
               nb_horiz_spheres, nb_vert_spheres);
+        let rj = 1. / nb_vert_spheres / 2.;
+        let ri = 1. / nb_horiz_spheres / 2.;
 
         let get_color_avg = |s: &Sphere, x: u32, y: u32| -> (Rgb<u8>, u64) {
             if x >= buf.width() || y >= buf.height() {
@@ -138,9 +140,6 @@ impl Scene {
             (p.clone(), avg)
         };
         let get_screenprint = |ci: f64, cj: f64| -> ((u32, u32), (u32, u32)) {
-            let rj = 1. / nb_vert_spheres / 2.;
-            let ri = 1. / nb_horiz_spheres / 2.;
-
             let x0f = ((ci - ri) * (ray_ctx.width as f64)).trunc();
             let x0 = if x0f < 0. {
                 0
@@ -210,9 +209,7 @@ impl Scene {
                 Rgb([rng.gen::<u8>(), rng.gen::<u8>(), rng.gen::<u8>()])
             }
         };
-
-        /* front */
-        let add_point_front = |i: f64, j: f64| {
+        let add_point = |i: f64, j: f64, is_front: bool| {
             /* Vertical fov is π/2 */
             let vangle = PI / 2. * (j - 0.5) / ray_ctx.aspect_ratio;
             let vsin = vangle.sin();
@@ -232,25 +229,32 @@ impl Scene {
                 hsin * ray_ctx.b.z + hcos * ray_ctx.eye.direction.z,
                 );
             let dir = v.addv(&h).subv(&ray_ctx.eye.direction).normalize();
+            let (f,r) = if is_front {
+                (f, radius)
+            } else {
+                (f + radius * 1.1, radius * 1.1)
+            };
             let c = dir.at(&ray_ctx.eye.origin, f);
-            let s = Sphere::new(c.clone(), radius, black.clone());
+            let s = Sphere::new(c.clone(), r, black.clone(), true);
             let color = get_color(&s, i, j);
-            Sphere::new(c, radius, color.clone())
+            Sphere::new(c, r, color.clone(), true)
         };
-        {
-            let n = (nb_horiz_spheres * nb_vert_spheres) as u32;
-            //let spheres : Vec<Sphere> = (0..n).into_par_iter().map(|idx| {
-            let spheres : Vec<Sphere> = (0..n).map(|idx| {
-                let j = idx / (nb_horiz_spheres as u32);
-                let i = idx % (nb_horiz_spheres as u32);
-                add_point_front((i as f64) / (nb_horiz_spheres - 1.),
-                                (j as f64) / (nb_vert_spheres - 1.))
-            }).collect();
-            for s in spheres {
-                self.add(BaseObject::Sphere(s));
-                nb_spheres += 1;
-            }
 
+        let n = (nb_horiz_spheres * nb_vert_spheres) as u32;
+        let spheres : Vec<(Sphere, Sphere)> = (0..n).into_par_iter().map(|idx| {
+            //let spheres : Vec<Sphere> = (0..n).map(|idx| {
+            let y = idx / (nb_horiz_spheres as u32);
+            let x = idx % (nb_horiz_spheres as u32);
+            let fi = (x as f64) / (nb_horiz_spheres - 1.);
+            let fj = (y as f64) / (nb_vert_spheres - 1.);
+            let f = add_point(fi, fj, true);
+            let s = add_point(fi + ri, fj + rj, false);
+            (f,s)
+        }).collect();
+        for (f,b) in spheres {
+            self.add(BaseObject::Sphere(f));
+            self.add(BaseObject::Sphere(b));
+            nb_spheres += 2;
         }
 
         return nb_spheres;
