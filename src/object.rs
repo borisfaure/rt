@@ -145,6 +145,7 @@ impl ObjectTrait for Ellipsoid {
             origin: ray.origin.addv(&self.translation).multv(&self.inv_radii),
             direction: ray.direction.multv(&self.inv_radii),
             is_light: ray.is_light,
+            ray_ctx: ray.ray_ctx,
         };
         let h = self.sphere.hits(&ray2, tmin, tmax);
         if let Some(hit) = h {

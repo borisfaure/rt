@@ -43,11 +43,26 @@ pub struct Screen {
     pub width: u32,
     pub height: u32,
 }
+#[derive(Debug)]
+pub struct RayCtx {
+    pub aspect_ratio: f64,
+    pub eye: Eye,
+    pub screen: Screen,
+    pub w: Vec3,
+    pub b: Vec3,
+    pub v: Vec3,
+    pub c: Vec3,
+    pub width: f64,
+    pub height: f64,
+    pub with_lambertian: bool,
+    pub with_shadows: bool,
+}
 #[derive(Debug, Clone)]
-pub struct Ray {
+pub struct Ray<'a> {
     pub origin: Vec3,
     pub direction: Vec3,
     pub is_light: bool,
+    pub ray_ctx: &'a RayCtx,
 }
 #[derive(Debug, Clone)]
 pub struct Footprint {
@@ -72,20 +87,8 @@ impl Footprint {
     }
 }
 
-#[derive(Debug)]
-pub struct RayCtx {
-    pub aspect_ratio: f64,
-    pub eye: Eye,
-    pub screen: Screen,
-    pub w: Vec3,
-    pub b: Vec3,
-    pub v: Vec3,
-    pub c: Vec3,
-    pub width: f64,
-    pub height: f64,
-}
 impl RayCtx {
-    pub fn new(eye: &Eye, screen: &Screen) -> RayCtx {
+    pub fn new(eye: &Eye, screen: &Screen, with_lambertian: bool, with_shadows: bool) -> RayCtx {
         let w = Vec3::new_normalized(0., 1., 0.);
         let b = w.cross_product(&eye.direction).normalize(); // →
         let v = eye.direction.cross_product(&b).normalize(); // ↑
@@ -110,6 +113,8 @@ impl RayCtx {
             c: c,
             width: width,
             height: height,
+            with_lambertian: with_lambertian,
+            with_shadows: with_shadows,
         };
         info!("TL:{:?} TR:{:?} BR:{:?} BL:{:?}",
               r.ij_to_screen(0., 0.),
@@ -274,13 +279,13 @@ impl RayCtx {
 
     fn cast_ray_from_eye(&self, scene: &Scene, i: f64, j: f64) -> Vec3 {
         let r = Ray::new(&self, i, j, false);
-        color(&r, scene, 0)
+        r.color(scene, 0)
     }
 }
 
-impl Ray {
+impl<'a> Ray<'a> {
     /* i, j in [0,1], in usual direction (origin is bottom left) */
-    pub fn new(ctx: &RayCtx, i: f64, j: f64, is_light: bool) -> Ray {
+    pub fn new(ctx: &'a RayCtx, i: f64, j: f64, is_light: bool) -> Ray<'a> {
         /* Origin is the eye */
         let screen_point = ctx.ij_to_screen(i, j);
         let d = ctx.eye.origin.to(&screen_point).normalize();
@@ -288,6 +293,7 @@ impl Ray {
             origin: ctx.eye.origin.clone(),
             direction: d,
             is_light: is_light,
+            ray_ctx: ctx,
         };
         r
     }
@@ -295,81 +301,80 @@ impl Ray {
     pub fn at(&self, t: f64) -> Vec3 {
         self.direction.at(&self.origin, t)
     }
-}
 
-fn lambertian(hit: &Hit, scene: &Scene, depth: u8) -> Vec3 {
-    let u = Vec3::random_in_unit_sphere();
-    let lambertian = Ray {
-        origin: hit.p.clone(),
-        direction: u.addv(&hit.normal),
-        is_light: false,
-    };
-    let c = color(&lambertian, &scene, depth + 1);
-    c.multv(&hit.color)
-}
+    fn hits(&'a self, scene: &Scene) -> Hit {
+        let mut hit_min = Hit::new();
 
-fn hits(ray: &Ray, scene: &Scene) -> Hit {
-    let mut hit_min = Hit::new();
-
-    for o in &scene.objects {
-        if let Some(hit) = o.hits(&ray, 0_f64, hit_min.t) {
-            if hit.t < hit_min.t {
-                hit_min = hit;
-            }
-        }
-    }
-    hit_min
-}
-
-fn color(ray: &Ray, scene: &Scene, depth: u8) -> Vec3 {
-    let hit_min = hits(ray, scene);
-
-    if hit_min.t == f64::INFINITY {
-        /* ray hit the sky */
-        let daylight = true;
-        let c1: Rgb<u8>;
-        let c2: Rgb<u8>;
-        if daylight {
-            /* daylight */
-            c1 = Rgb([255, 255, 255]);
-            c2 = Rgb([77, 143, 170]);
-        } else {
-            /* dusk */
-            c1 = Rgb([20, 24, 42]);
-            c2 = Rgb([43, 47, 82]);
-        }
-        let ud = ray.direction.normalize();
-        //assert!(ud.y >= 0_f64);
-        //assert!(ud.y <= 1_f64);
-        scale_rgb(&c2, &c1, f64::abs(ud.y)).unwrap().into()
-    } else {
-        let with_lambertian = false;
-        let with_shadows = true;
-        let mut c: Vec3;
-        if with_lambertian {
-            if depth > DEPTH_MAX {
-                return Vec3::new(0., 0., 0.);
-            }
-            c = lambertian(&hit_min, scene, depth);
-        } else {
-            c = hit_min.color;
-        }
-        if with_shadows {
-            if let Some((ref sun, ref sun_color, ref softness)) = scene.sun {
-                let start = hit_min.normal.at(&hit_min.p, EPSILON);
-                let sun_ray = Ray {
-                    origin: start,
-                    direction: sun.clone(),
-                    is_light: true,
-                };
-                let sun_hit = hits(&sun_ray, scene);
-                if sun_hit.t == f64::INFINITY {
-                    c.mixed(sun_color, 1. - *softness);
-                } else {
-                    c.mult(*softness);
+        for o in &scene.objects {
+            if let Some(hit) = o.hits(&self, 0_f64, hit_min.t) {
+                if hit.t < hit_min.t {
+                    hit_min = hit;
                 }
             }
         }
-        c
+        hit_min
+    }
+
+    fn color(&'a self, scene: &Scene, depth: u8) -> Vec3 {
+        let hit_min = self.hits(scene);
+
+        if hit_min.t == f64::INFINITY {
+            /* ray hit the sky */
+            let daylight = true;
+            let c1: Rgb<u8>;
+            let c2: Rgb<u8>;
+            if daylight {
+                /* daylight */
+                c1 = Rgb([255, 255, 255]);
+                c2 = Rgb([77, 143, 170]);
+            } else {
+                /* dusk */
+                c1 = Rgb([20, 24, 42]);
+                c2 = Rgb([43, 47, 82]);
+            }
+            let ud = self.direction.normalize();
+            //assert!(ud.y >= 0_f64);
+            //assert!(ud.y <= 1_f64);
+            scale_rgb(&c2, &c1, f64::abs(ud.y)).unwrap().into()
+        } else {
+            let mut c: Vec3;
+            if self.ray_ctx.with_lambertian {
+                if depth > DEPTH_MAX {
+                    return Vec3::new(0., 0., 0.);
+                }
+                let lambertian = |hit: &Hit, depth: u8| -> Vec3 {
+                    let u = Vec3::random_in_unit_sphere();
+                    let lambertian = Ray {
+                        origin: hit.p.clone(),
+                        direction: u.addv(&hit.normal),
+                        is_light: false,
+                        ray_ctx: self.ray_ctx,
+                    };
+                    let c = lambertian.color(&scene, depth + 1);
+                    c.multv(&hit.color)
+                };
+                c = lambertian(&hit_min, depth);
+            } else {
+                c = hit_min.color;
+            }
+            if self.ray_ctx.with_shadows {
+                if let Some((ref sun, ref sun_color, ref softness)) = scene.sun {
+                    let start = hit_min.normal.at(&hit_min.p, EPSILON);
+                    let sun_ray = Ray {
+                        origin: start,
+                        direction: sun.clone(),
+                        is_light: true,
+                        ray_ctx: self.ray_ctx,
+                    };
+                    let sun_hit = sun_ray.hits(scene);
+                    if sun_hit.t == f64::INFINITY {
+                        c.mixed(sun_color, 1. - *softness);
+                    } else {
+                        c.mult(*softness);
+                    }
+                }
+            }
+            c
+        }
     }
 }

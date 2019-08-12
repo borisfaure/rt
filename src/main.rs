@@ -292,6 +292,16 @@ fn main() {
                         .default_value("4096x2160")
                         .validator(is_geometry)
                         .help("size of the image that would be generated"),
+                )
+                .arg(
+                    Arg::with_name("no_shadows")
+                        .long("no-shadows")
+                        .help("Do not render shadows"),
+                )
+                .arg(
+                    Arg::with_name("no_lambertian")
+                        .long("no-lambertians")
+                        .help("Do not render lambertians"),
                 ),
         )
         .get_matches();
@@ -324,7 +334,7 @@ fn main() {
             },
         };
 
-        let ray_ctx = RayCtx::new(&preset.eye, &preset.screen);
+        let ray_ctx = RayCtx::new(&preset.eye, &preset.screen, false, false);
 
         let floor = Plan::new(Vec3::origin(), floor_dir, Rgb([237, 201, 175]));
         let footprint = ray_ctx.get_footprint(&floor);
@@ -369,7 +379,7 @@ fn main() {
             scene.set_blue_sun();
         }
 
-        let ray_ctx = RayCtx::new(&preset.eye, &preset.screen);
+        let ray_ctx = RayCtx::new(&preset.eye, &preset.screen, false, false);
         dbg!("rayctx:{:?}", ray_ctx);
 
         let floor = Plan::new(Vec3::origin(), floor_dir, Rgb([237, 201, 175]));
@@ -401,7 +411,11 @@ fn main() {
             },
         };
 
-        let ray_ctx = RayCtx::new(&preset.eye, &preset.screen);
+        let lambertian = !m.is_present("no_lambertian");
+        let shadows = !m.is_present("no_shadows");
+
+        let ray_ctx = RayCtx::new(&preset.eye, &preset.screen,
+                                  lambertian, shadows);
 
         ray_ctx.render_scene(&scene, preset.nb_samples, pngpath);
     }
