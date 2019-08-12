@@ -92,10 +92,7 @@ impl RayCtx {
         let w = Vec3::new_normalized(0., 1., 0.);
         let b = w.cross_product(&eye.direction).normalize(); // →
         let v = eye.direction.cross_product(&b).normalize(); // ↑
-        info!(
-            "w:{:?} b:{:?} v:{:?} eye:{:?}",
-            w, b, v, eye,
-        );
+        info!("w:{:?} b:{:?} v:{:?} eye:{:?}", w, b, v, eye,);
         let d = 1.;
         let c = eye.origin.translate(&eye.direction, d);
         // Obtain the image's width and height.
@@ -116,16 +113,18 @@ impl RayCtx {
             with_lambertian: with_lambertian,
             with_shadows: with_shadows,
         };
-        info!("TL:{:?} TR:{:?} BR:{:?} BL:{:?}",
-              r.ij_to_screen(0., 0.),
-              r.ij_to_screen(1., 0.),
-              r.ij_to_screen(1., 1.),
-              r.ij_to_screen(0., 1.),
-              );
-        info!("T:{:?} B:{:?}",
-              r.ij_to_screen(0.5, 0.),
-              r.ij_to_screen(0.5, 1.),
-              );
+        info!(
+            "TL:{:?} TR:{:?} BR:{:?} BL:{:?}",
+            r.ij_to_screen(0., 0.),
+            r.ij_to_screen(1., 0.),
+            r.ij_to_screen(1., 1.),
+            r.ij_to_screen(0., 1.),
+        );
+        info!(
+            "T:{:?} B:{:?}",
+            r.ij_to_screen(0.5, 0.),
+            r.ij_to_screen(0.5, 1.),
+        );
         r
     }
 

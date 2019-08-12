@@ -76,17 +76,16 @@ fn is_vec3(val: String) -> Result<(), String> {
     }
 }
 
-fn parse_sun(val: &str) -> Result<Option<(Vec3,Vec3,f64)>, String> {
-    let re = Regex::new(
-        concat!(
+fn parse_sun(val: &str) -> Result<Option<(Vec3, Vec3, f64)>, String> {
+    let re = Regex::new(concat!(
         r"\(([+-]?[0-9]+[.]?[0-9]*),",
         r"[ ]+([+-]?[0-9]+[.]?[0-9]*),",
         r"[ ]+([+-]?[0-9]+[.]?[0-9]*),",
         r"[ ]+([0-9]+),",
         r"[ ]+([0-9]+),",
         r"[ ]+([0-9]+),",
-        r"[ ]+([0-1][.]?[0-9]*)\)",)
-    )
+        r"[ ]+([0-1][.]?[0-9]*)\)",
+    ))
     .unwrap();
     if let Some(m) = re.captures(&val) {
         let a: f64 = m.get(1).unwrap().as_str().parse::<f64>().unwrap();
@@ -97,9 +96,7 @@ fn parse_sun(val: &str) -> Result<Option<(Vec3,Vec3,f64)>, String> {
         let cb: u8 = m.get(6).unwrap().as_str().parse::<u8>().unwrap();
         let f: f64 = m.get(7).unwrap().as_str().parse::<f64>().unwrap();
         if f > 0. {
-            Ok(Some((Vec3::new(a, b, c),
-                    Rgb([cr, cg, cb]).into(),
-                    f)))
+            Ok(Some((Vec3::new(a, b, c), Rgb([cr, cg, cb]).into(), f)))
         } else {
             Ok(None)
         }
@@ -414,8 +411,7 @@ fn main() {
         let lambertian = !m.is_present("no_lambertian");
         let shadows = !m.is_present("no_shadows");
 
-        let ray_ctx = RayCtx::new(&preset.eye, &preset.screen,
-                                  lambertian, shadows);
+        let ray_ctx = RayCtx::new(&preset.eye, &preset.screen, lambertian, shadows);
 
         ray_ctx.render_scene(&scene, preset.nb_samples, pngpath);
     }

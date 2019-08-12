@@ -3,12 +3,12 @@ use crate::object::{BaseObject, Conifer, ObjectTrait, Sphere};
 use crate::raytracer::{Footprint, Ray, RayCtx};
 use image::{Rgb, RgbImage};
 use rand::Rng;
+use rayon::prelude::*;
 use std::error::Error;
 use std::f64::{self, consts::PI};
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
-use rayon::prelude::*;
 
 #[derive(Serialize, Deserialize)]
 pub struct Scene {
@@ -103,7 +103,12 @@ impl Scene {
         }
     }
 
-    pub fn generate_from_image(&mut self, ray_ctx: &RayCtx, buf: RgbImage, nb_vert_spheres: f64) -> usize {
+    pub fn generate_from_image(
+        &mut self,
+        ray_ctx: &RayCtx,
+        buf: RgbImage,
+        nb_vert_spheres: f64,
+    ) -> usize {
         let black = Rgb([0, 0, 0]);
         let mut nb_spheres: usize = 0;
         let radius = 2. * PI / (4. * nb_vert_spheres * ray_ctx.aspect_ratio - PI);
@@ -111,8 +116,10 @@ impl Scene {
         info!("radius:{:?} f:{:?}", radius, f);
         let nb_horiz_spheres = (nb_vert_spheres * ray_ctx.aspect_ratio).ceil();
         let nb_vert_spheres = nb_vert_spheres + 1.;
-        info!("nb_horiz_spheres:{:?} nb_vert_spheres:{:?}",
-              nb_horiz_spheres, nb_vert_spheres);
+        info!(
+            "nb_horiz_spheres:{:?} nb_vert_spheres:{:?}",
+            nb_horiz_spheres, nb_vert_spheres
+        );
         let rj = 1. / nb_vert_spheres / 2.;
         let ri = 1. / nb_horiz_spheres / 2.;
 
@@ -222,14 +229,14 @@ impl Scene {
                 vsin * ray_ctx.v.x + vcos * ray_ctx.eye.direction.x,
                 vsin * ray_ctx.v.y + vcos * ray_ctx.eye.direction.y,
                 vsin * ray_ctx.v.z + vcos * ray_ctx.eye.direction.z,
-                );
+            );
             let h = Vec3::new_normalized(
                 hsin * ray_ctx.b.x + hcos * ray_ctx.eye.direction.x,
                 hsin * ray_ctx.b.y + hcos * ray_ctx.eye.direction.y,
                 hsin * ray_ctx.b.z + hcos * ray_ctx.eye.direction.z,
-                );
+            );
             let dir = v.addv(&h).subv(&ray_ctx.eye.direction).normalize();
-            let (f,r) = if is_front {
+            let (f, r) = if is_front {
                 (f, radius)
             } else {
                 (f + radius * 1.1, radius * 1.1)
@@ -241,17 +248,20 @@ impl Scene {
         };
 
         let n = (nb_horiz_spheres * nb_vert_spheres) as u32;
-        let spheres : Vec<(Sphere, Sphere)> = (0..n).into_par_iter().map(|idx| {
-            //let spheres : Vec<Sphere> = (0..n).map(|idx| {
-            let y = idx / (nb_horiz_spheres as u32);
-            let x = idx % (nb_horiz_spheres as u32);
-            let fi = (x as f64) / (nb_horiz_spheres - 1.);
-            let fj = (y as f64) / (nb_vert_spheres - 1.);
-            let f = add_point(fi, fj, true);
-            let s = add_point(fi + ri, fj + rj, false);
-            (f,s)
-        }).collect();
-        for (f,b) in spheres {
+        let spheres: Vec<(Sphere, Sphere)> = (0..n)
+            .into_par_iter()
+            .map(|idx| {
+                //let spheres : Vec<Sphere> = (0..n).map(|idx| {
+                let y = idx / (nb_horiz_spheres as u32);
+                let x = idx % (nb_horiz_spheres as u32);
+                let fi = (x as f64) / (nb_horiz_spheres - 1.);
+                let fj = (y as f64) / (nb_vert_spheres - 1.);
+                let f = add_point(fi, fj, true);
+                let s = add_point(fi + ri, fj + rj, false);
+                (f, s)
+            })
+            .collect();
+        for (f, b) in spheres {
             self.add(BaseObject::Sphere(f));
             self.add(BaseObject::Sphere(b));
             nb_spheres += 2;
@@ -264,10 +274,7 @@ impl Scene {
         /* compute radius + bottom left pos */
         let p_bottom_right = ray_ctx.ij_to_screen(1., 1.);
         let p_top_right = ray_ctx.ij_to_screen(1., 0.);
-        let diameter = 0.008
-            * p_bottom_right
-                .length_sq_to(&p_top_right)
-                .sqrt();
+        let diameter = 0.008 * p_bottom_right.length_sq_to(&p_top_right).sqrt();
         let radius = diameter / 2.;
         let c = ray_ctx
             .eye
